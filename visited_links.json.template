@@ -1,0 +1,12 @@
+[
+  {
+    "url": "https://members.delphidigital.io/reports/example-report",
+    "title": "Example Report Title",
+    "body": "",
+    "timestamp": "2025-01-01T00:00:00.000Z",
+    "scrapedAt": "2025-01-01T00:00:00.000Z",
+    "lastChecked": "2025-01-01T00:00:00.000Z",
+    "summary": "This is an example summary of a report.\n\nRelevance to Kaia: This shows how the summary format works.",
+    "publicationDate": "2025-01-01T00:00:00.000Z"
+  }
+] 
