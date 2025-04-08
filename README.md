@@ -18,6 +18,20 @@ SLACK_TOKEN=your_slack_bot_token
 SLACK_CHANNEL_ID=your_slack_channel_id
 ```
 
+3. Set up required files:
+   - Copy `visited_links.json.template` to `visited_links.json`
+   - This file is essential - it stores all report links and their summaries
+
+For a complete setup guide, see [SETUP.md](SETUP.md).
+
+## Required Files
+
+- `summarize.js`: Main script for scraping and processing
+- `.env`: Environment variables and credentials
+- `visited_links.json`: Stores all reports and summaries
+- `delphi_cookies.json`: Created automatically to store login cookies
+- `processed_reports_cache.json`: Created automatically to track processed reports
+
 ## Usage
 
 Basic usage:
