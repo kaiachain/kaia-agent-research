@@ -46,6 +46,28 @@ This will:
 4. Save summaries to `visited_links.json`
 5. Send notifications to Slack
 
+## Daily Digest
+
+The tool includes a daily digest feature that sends a summary of recent Delphi reports to Slack:
+
+```
+node slack-digest.js
+```
+
+This script:
+1. Finds all reports processed in the last 24 hours
+2. Creates a formatted digest of these reports with titles, summaries, and links
+3. Sends the digest to your configured Slack channel
+
+## Automation with Cron
+
+For regular updates without manual intervention, you can set up automated execution using cron jobs:
+
+- Run the scraper twice daily (e.g., morning and evening)
+- Run the daily digest once per day (e.g., evening)
+
+See [cron-setup.md](cron-setup.md) for detailed instructions on setting up automation.
+
 ## Reprocessing Reports
 
 The tool supports several options for reprocessing reports:
