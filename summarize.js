@@ -23,6 +23,12 @@ const args = process.argv.slice(2);
 const forceReprocessUrls = [];
 let forceReprocessCount = 0;
 let forceSummaries = false;
+let checkForNew = false;
+let runScheduler = false;
+let runDigest = false;
+let startDaemon = false;
+let stopDaemon = false;
+let checkStatus = false;
 
 // Process command line arguments
 for (let i = 0; i < args.length; i++) {
@@ -35,6 +41,18 @@ for (let i = 0; i < args.length; i++) {
         i++; // Skip next arg
     } else if (args[i] === '--force-summaries') {
         forceSummaries = true;
+    } else if (args[i] === '--check-new') {
+        checkForNew = true;
+    } else if (args[i] === '--scheduler') {
+        runScheduler = true;
+    } else if (args[i] === '--digest') {
+        runDigest = true;
+    } else if (args[i] === '--start-daemon') {
+        startDaemon = true;
+    } else if (args[i] === '--stop-daemon') {
+        stopDaemon = true;
+    } else if (args[i] === '--status') {
+        checkStatus = true;
     }
 }
 
@@ -911,4 +929,128 @@ processAllLinks().catch(async (error) => {
     console.error(error);
     // Send error notification to Slack
     await sendSlackMessage(`❌ *Error in Delphi Digital processing*\n\`\`\`${error.message}\`\`\``);
-}); 
+});
+
+// Function to format a date as a string (for digest)
+function formatDate(date) {
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+// Function to generate and send daily digest
+async function sendDailyDigest() {
+    try {
+        console.log('Generating daily Delphi Digital digest...');
+        
+        // Read the visited_links.json file
+        const jsonData = JSON.parse(await fs.readFile('visited_links.json', 'utf8'));
+        const reports = Object.values(jsonData);
+        
+        // Get current date and the date 24 hours ago
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Filter for reports updated in the last 24 hours
+        const recentReports = reports.filter(report => {
+            if (!report.lastChecked) return false;
+            const lastChecked = new Date(report.lastChecked);
+            return lastChecked >= yesterday;
+        });
+        
+        // Sort by publication date (newest first)
+        recentReports.sort((a, b) => {
+            const dateA = a.publicationDate ? new Date(a.publicationDate) : new Date(0);
+            const dateB = b.publicationDate ? new Date(b.publicationDate) : new Date(0);
+            return dateB - dateA;
+        });
+        
+        // If no recent reports, send a notification and exit
+        if (recentReports.length === 0) {
+            console.log('No recent reports found in the last 24 hours.');
+            await slack.chat.postMessage({
+                channel: slackChannel,
+                text: `:information_source: *Delphi Digital Daily Digest*\nNo new reports from Delphi Digital in the last 24 hours.`
+            });
+            return;
+        }
+        
+        // Generate digest header
+        const digestBlocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": `Delphi Digital Daily Digest - ${formatDate(now)}`
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": `*${recentReports.length} report${recentReports.length > 1 ? 's' : ''} in the last 24 hours:*`
+                }
+            },
+            {
+                "type": "divider"
+            }
+        ];
+        
+        // Add each report to the digest
+        for (const report of recentReports) {
+            // Format publication date if available
+            const publishDate = report.publicationDate 
+                ? new Date(report.publicationDate).toLocaleDateString() 
+                : "Unknown date";
+            
+            // Create blocks for this report
+            digestBlocks.push(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": `*${report.title}*\n${publishDate} · <${report.url}|View Report>`
+                    }
+                }
+            );
+            
+            // Add summary if available (truncated if too long)
+            if (report.summary) {
+                let summary = report.summary;
+                if (summary.length > 500) {
+                    summary = summary.substring(0, 500) + '...';
+                }
+                
+                digestBlocks.push(
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": summary
+                        }
+                    }
+                );
+            }
+            
+            // Add divider between reports
+            digestBlocks.push({
+                "type": "divider"
+            });
+        }
+        
+        // Send digest to Slack
+        const result = await slack.chat.postMessage({
+            channel: slackChannel,
+            blocks: digestBlocks
+        });
+        
+        console.log('Daily digest sent to Slack successfully');
+        console.log(`Message ID: ${result.ts}`);
+        
+    } catch (error) {
+        console.error('Error sending daily digest:', error);
+    }
+} 

@@ -2,6 +2,10 @@ require('dotenv').config();
 const fs = require('fs').promises;
 const { WebClient } = require('@slack/web-api');
 const path = require('path');
+const { config, loadConfigFromEnv } = require('../config/config');
+
+// Load configuration
+const appConfig = loadConfigFromEnv();
 
 // Initialize Slack client
 const slack = new WebClient(process.env.SLACK_TOKEN);
@@ -22,7 +26,7 @@ async function sendDailyDigest() {
         console.log('Generating daily Delphi Digital digest...');
         
         // Read the visited_links.json file
-        const jsonData = JSON.parse(await fs.readFile('visited_links.json', 'utf8'));
+        const jsonData = JSON.parse(await fs.readFile(appConfig.VISITED_LINKS_FILE, 'utf8'));
         const reports = Object.values(jsonData);
         
         // Get current date and the date 24 hours ago
@@ -131,5 +135,10 @@ async function sendDailyDigest() {
     }
 }
 
-// Execute the function
-sendDailyDigest(); 
+// Execute the function if this script is run directly
+if (require.main === module) {
+    sendDailyDigest();
+}
+
+// Export for use in other modules
+module.exports = { sendDailyDigest }; 

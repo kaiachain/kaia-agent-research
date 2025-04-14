@@ -1,0 +1,50 @@
+FROM node:20-slim
+
+# Install dependencies for Puppeteer
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    procps \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxi6 \
+    libxtst6 \
+    libnss3 \
+    libcups2 \
+    libxss1 \
+    libxrandr2 \
+    libglib2.0-0 \
+    libasound2 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libpangocairo-1.0-0 \
+    libgtk-3-0 \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy package.json only first
+COPY package.json ./
+
+# Generate a fresh package-lock.json matching the package.json versions
+RUN npm install --package-lock-only
+
+# Now install dependencies based on the newly generated package-lock.json
+RUN npm ci --omit=dev
+
+# Copy application code
+COPY . .
+
+# Create volume mount points for persisting data
+VOLUME ["/app/delphi_cookies.json", "/app/visited_links.json", "/app/processed_reports_cache.json"]
+
+# Set environment variables from .env file at runtime
+ENV NODE_ENV=production
+
+# Run the application
+CMD ["node", "summarize.js"] 

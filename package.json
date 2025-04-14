@@ -2,12 +2,32 @@
   "name": "delphi-scraper",
   "version": "1.0.0",
   "description": "A tool for scraping, summarizing, and processing Delphi Digital reports",
-  "main": "summarize.js",
+  "main": "src/scripts/summarize.js",
+  "bin": {
+    "delphi-start": "./bin/delphi-start",
+    "delphi-stop": "./bin/delphi-stop",
+    "delphi-status": "./bin/delphi-status"
+  },
   "scripts": {
-    "start": "node summarize.js",
-    "process": "node summarize.js",
-    "force-latest": "node summarize.js --force-latest",
-    "force-summaries": "node summarize.js --force-summaries"
+    "start": "node src/scripts/summarize.js",
+    "process": "node src/scripts/summarize.js",
+    "force-latest": "node src/scripts/summarize.js --force-latest",
+    "force-summaries": "node src/scripts/summarize.js --force-summaries",
+    "daemon:start": "node src/cli/start-daemon.js",
+    "daemon:stop": "node src/cli/stop-daemon.js",
+    "daemon:status": "node src/cli/status-daemon.js",
+    "check": "node src/scripts/check-delphi.js",
+    "digest": "node src/scripts/slack-digest.js",
+    "webhook": "node src/scripts/slack-webhook.js",
+    "delphi:run": "node src/scripts/delphi-full-flow.js",
+    "delphi:daemon": "node src/scripts/delphi-full-flow.js --daemon",
+    "delphi:stop": "node src/cli/stop-daemon.js",
+    "delphi:fix-links": "node src/scripts/fix-visited-links.js",
+    "delphi:sort-links": "node src/scripts/sort-visited-links.js",
+    "slack:history": "node src/scripts/slack-history.js",
+    "slack:report-messages": "node src/scripts/slack-history.js --url=",
+    "slack:send-unsent": "node src/scripts/send-unsent-reports.js",
+    "slack:dry-run": "node src/scripts/send-unsent-reports.js --dry-run"
   },
   "keywords": [
     "delphi",
@@ -21,7 +41,9 @@
   "dependencies": {
     "@google/generative-ai": "^0.1.3",
     "@slack/web-api": "^6.10.0",
+    "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
-    "puppeteer": "^21.5.2"
+    "express": "^4.18.2",
+    "puppeteer": "^24.6.1"
   }
 }

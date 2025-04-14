@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Node.js
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Sensitive data files
+delphi_cookies.json
+
+# Test files
+*.test.js
+
+# Screenshots and HTML debug files
+*.png
+*.html
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Temporary files
+.DS_Store
+*.swp
+*.swo
+
+# Backup files
+backups/
+*.backup
+
+# Large JSON data files (these will be mounted as volumes)
+visited_links.json
+processed_reports_cache.json 

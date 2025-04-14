@@ -1,0 +1,55 @@
+services:
+  # Main service using the default Dockerfile
+  # If you encounter package version issues, use the rebuild-lock service below instead
+  delphi-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delphi-scraper
+    restart: unless-stopped
+    volumes:
+      - ./delphi_cookies.json:/app/delphi_cookies.json
+      - ./visited_links.json:/app/visited_links.json
+      - ./processed_reports_cache.json:/app/processed_reports_cache.json
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
+    # Default command that runs the main application
+    command: node summarize.js
+    
+  # Alternative service that rebuilds package-lock.json during the build
+  # Uncomment and use this service if you face package version mismatch issues
+  # delphi-scraper-rebuild:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.rebuild-lock
+  #   container_name: delphi-scraper
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./delphi_cookies.json:/app/delphi_cookies.json
+  #     - ./visited_links.json:/app/visited_links.json
+  #     - ./processed_reports_cache.json:/app/processed_reports_cache.json
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - TZ=UTC
+  #   command: node summarize.js
+    
+  # Slack digest service
+  slack-digest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delphi-slack-digest
+    restart: unless-stopped
+    volumes:
+      - ./visited_links.json:/app/visited_links.json
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
+    command: node slack-digest.js
+    # This service is meant to be run manually or via external cron
+    profiles:
+      - digest 

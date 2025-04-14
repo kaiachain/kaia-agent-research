@@ -1,128 +1,204 @@
-# Delphi Digital Scraper and Summarizer
+# Delphi Digital Report Scraper
 
-This tool automatically processes Delphi Digital reports, extracts content, and generates summaries using the Google Gemini API. It also provides Slack notifications for new reports.
+A tool for automatically scraping, summarizing, and processing Delphi Digital reports. Includes Slack integration for notifications and digests.
 
-## Setup
+## Table of Contents
 
-1. Install dependencies:
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Usage](#usage)
+  - [Full Flow Process](#full-flow-process-recommended)
+  - [Individual Components](#individual-components)
+  - [Fixing Visited Links](#fixing-visited-links)
+  - [Sorting Reports by Date](#sorting-reports-by-date)
+  - [Slack Message History](#slack-message-history)
+  - [Sending Unsent Reports](#sending-unsent-reports)
+- [Customization](#customization)
+- [Development](#development)
+- [Automation with Cron](#automation-with-cron)
+- [Slack Integration](#slack-integration)
+- [Docker Setup](#docker-setup)
+- [Troubleshooting](#troubleshooting)
+- [Implementation Guide](#implementation-guide)
+- [License](#license)
+
+## Project Structure
+
 ```
-npm install puppeteer @google/generative-ai @slack/web-api dotenv
+delphi/
+├── bin/                      # Command-line executables 
+│   ├── delphi-start          # Start the daemon
+│   ├── delphi-stop           # Stop the daemon
+│   └── delphi-status         # Check daemon status
+├── src/                      # Source code
+│   ├── browser/              # Browser automation code
+│   │   └── browser.js        # Browser utilities
+│   ├── cli/                  # CLI tools
+│   │   ├── start-daemon.js   # Start daemon script
+│   │   ├── stop-daemon.js    # Stop daemon script
+│   │   └── status-daemon.js  # Status daemon script
+│   ├── config/               # Configuration
+│   │   └── config.js         # App configuration
+│   ├── data/                 # Data files
+│   │   ├── backups/          # Backup directory
+│   │   ├── delphi_cookies.json  # Stored cookies
+│   │   ├── processed_reports_cache.json  # Processed reports
+│   │   └── visited_links.json # Links that have been visited
+│   ├── scripts/              # Main application scripts
+│   │   ├── check-delphi.js   # Script to check for new reports
+│   │   └── summarize.js      # Script to summarize reports
+│   ├── services/             # Business logic modules
+│   │   ├── ai.js             # Gemini AI service
+│   │   ├── auth.js           # Authentication service
+│   │   ├── reports.js        # Reports service
+│   │   └── slack.js          # Slack integration service
+│   └── utils/                # Utility functions
+│       ├── cache.js          # Cache utilities
+│       └── content-extractor.js  # Content extraction utilities
+├── .env                      # Environment variables
+├── .env.example              # Example environment variables
+├── .gitignore                # Git ignore file
+├── Dockerfile                # Docker configuration
+├── docker-compose.yml        # Docker Compose configuration
+├── delphi-checker.pid        # PID file for daemon
+├── package.json              # NPM package info
+└── package-lock.json         # NPM package lock
 ```
 
-2. Create a `.env` file with the following variables:
+## Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/avdheshcharjan/delphi-scraper.git
+   cd delphi-scraper
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**:
+   - Copy `.env.example` to `.env`
+   ```bash
+   cp .env.example .env
+   ```
+   - Edit `.env` and fill in your credentials (see [Environment Variables](#environment-variables))
+
+4. **Set up the data directory**:
+   ```bash
+   mkdir -p src/data
+   cp visited_links.json.template src/data/visited_links.json
+   ```
+
+## Environment Variables
+
+Required configuration:
 ```
-GEMINI_API_KEY=your_gemini_api_key
+# Delphi Digital credentials
 DELPHI_EMAIL=your_delphi_login_email
 DELPHI_PASSWORD=your_delphi_login_password
+
+# Google Gemini API
+GEMINI_API_KEY=your_gemini_api_key
+
+# Slack integration
 SLACK_TOKEN=your_slack_bot_token
 SLACK_CHANNEL_ID=your_slack_channel_id
 ```
 
-3. Set up required files:
-   - Copy `visited_links.json.template` to `visited_links.json`
-   - This file is essential - it stores all report links and their summaries
+Optional configuration:
+```
+# Optional: Custom file paths (these are set by default in Docker)
+COOKIES_FILE=src/data/delphi_cookies.json
+CACHE_FILE=src/data/processed_reports_cache.json
+VISITED_LINKS_FILE=src/data/visited_links.json
+BACKUPS_DIR=src/data/backups
 
-For a complete setup guide, see [SETUP.md](SETUP.md).
-
-## Required Files
-
-- `summarize.js`: Main script for scraping and processing
-- `.env`: Environment variables and credentials
-- `visited_links.json`: Stores all reports and summaries
-- `delphi_cookies.json`: Created automatically to store login cookies
-- `processed_reports_cache.json`: Created automatically to track processed reports
+# Optional: Check interval in milliseconds (default: 24 hours)
+CHECK_INTERVAL=86400000
+```
 
 ## Usage
 
-Basic usage:
-```
-node summarize.js
-```
+### Full Flow Process (Recommended)
 
-This will:
-1. Login to Delphi Digital (using saved cookies if available)
-2. Process all reports in `visited_links.json`
-3. Extract content and generate summaries for new or updated reports
-4. Save summaries to `visited_links.json`
-5. Send notifications to Slack
+The recommended way to use this tool is with the full flow process:
 
-## Daily Digest
+```bash
+# Run once
+npm run delphi:run
 
-The tool includes a daily digest feature that sends a summary of recent Delphi reports to Slack:
+# Run in daemon mode (checks every 24 hours)
+npm run delphi:daemon
 
-```
-node slack-digest.js
+# Stop the daemon
+npm run delphi:stop
 ```
 
-This script:
-1. Finds all reports processed in the last 24 hours
-2. Creates a formatted digest of these reports with titles, summaries, and links
-3. Sends the digest to your configured Slack channel
+### Individual Components
 
-## Automation with Cron
+```bash
+# Check for new reports
+npm run check
 
-For regular updates without manual intervention, you can set up automated execution using cron jobs:
+# Process and summarize reports
+npm run process
 
-- Run the scraper twice daily (e.g., morning and evening)
-- Run the daily digest once per day (e.g., evening)
+# Force reprocess latest reports
+npm run force-latest <count>
 
-See [cron-setup.md](cron-setup.md) for detailed instructions on setting up automation.
+# Force regenerate all summaries
+npm run force-summaries
 
-## Reprocessing Reports
-
-The tool supports several options for reprocessing reports:
-
-### Force Reprocessing of Latest Reports
-
-To reprocess the latest N reports regardless of their cache status:
-```
-node summarize.js --force-latest 5
+# Send daily digest to Slack
+npm run digest
 ```
 
-This will reprocess the 5 most recent reports, as determined by their publication date.
+### Docker Setup
 
-### Force Reprocessing of Specific URLs
+1. **Build and start the container**:
+   ```bash
+   docker-compose up -d
+   ```
 
-To reprocess one or more specific reports by URL:
-```
-node summarize.js --force-url https://members.delphidigital.io/reports/some-report-url
-```
+2. **View logs**:
+   ```bash
+   docker-compose logs -f
+   ```
 
-You can specify multiple URLs:
-```
-node summarize.js --force-url https://url1 --force-url https://url2
-```
+3. **Run the Slack digest service**:
+   ```bash
+   docker-compose run --rm slack-digest
+   ```
 
-### Force Regeneration of Summaries
+The Docker setup includes:
+- Automatic volume mounting for data persistence
+- Pre-configured environment variables for file paths
+- All necessary dependencies for Puppeteer
+- Support for running both the main scraper and digest services
 
-By default, the tool skips regenerating summaries if the content hasn't changed. To force summary regeneration even for unchanged content:
-```
-node summarize.js --force-summaries
-```
+### Troubleshooting
 
-This can be combined with other options:
-```
-node summarize.js --force-latest 3 --force-summaries
-```
+Common issues and solutions:
 
-## Caching and Performance
+1. **Login Issues**:
+   - Check your Delphi credentials in `.env`
+   - Delete `src/data/delphi_cookies.json` to force a fresh login
+   - Check the debug screenshots in the root directory
 
-The tool maintains two cache files:
-- `delphi_cookies.json`: Saves login session cookies to minimize login attempts
-- `processed_reports_cache.json`: Tracks processed reports and their content hashes
+2. **Slack Issues**:
+   - Verify your Slack token and channel ID
+   - Ensure the bot is invited to the channel
+   - Check console output for error messages
 
-## Output Format
+3. **Docker Issues**:
+   - Ensure Docker is running
+   - Check container logs: `docker-compose logs`
+   - Verify volume permissions
+   - For Puppeteer errors, check container has all required dependencies
 
-Each report's summary in Slack follows a consistent format:
-- Title
-- Main summary points
-- Relevance to Kaia
-- Publication date
-- Link to original report
+## License
 
-## Troubleshooting
-
-If you encounter issues with login or scraping:
-1. Check saved screenshots (`login-page.png`, `login-failed.png`, etc.)
-2. Look at saved HTML files for debugging
-3. Try reprocessing specific reports with the `--force-url` option 
+ISC 
