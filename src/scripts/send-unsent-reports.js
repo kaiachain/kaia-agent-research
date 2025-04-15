@@ -149,13 +149,14 @@ async function sendUnsentReports() {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
-    // Send notification that processing is complete
-    await sendSlackMessage(`✅ Successfully sent ${finalUnsentReports.length} previously processed reports to Slack!`);
+    // Log locally instead of sending to Slack
+    logWithTimestamp(`✅ Successfully sent ${finalUnsentReports.length} previously processed reports to Slack!`);
     
     return true;
   } catch (error) {
-    console.error('Error sending unsent reports:', error);
-    await sendSlackMessage(`❌ Error sending unsent reports: ${error.message}`);
+    logWithTimestamp(`Error sending unsent reports: ${error.message}`, 'error');
+    // Don't send errors to Slack, only log them to console
+    // await sendSlackMessage(`❌ Error sending unsent reports: ${error.message}`);
     return false;
   }
 }

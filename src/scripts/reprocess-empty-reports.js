@@ -190,7 +190,8 @@ async function reprocessEmptyReports() {
             }
           }
           
-          await sendSlackMessage(`✅ Successfully sent ${processedReports.length} reports to Slack!`);
+          // Log locally instead of sending to Slack
+          logWithTimestamp(`✅ Successfully sent ${processedReports.length} reports to Slack!`);
         }
       } else {
         console.log('Failed to process any empty reports successfully.');
@@ -204,10 +205,9 @@ async function reprocessEmptyReports() {
       await browser.close();
     }
   } catch (error) {
-    console.error('Error in reprocessing empty reports:', error);
-    if (slackInitialized) {
-      await sendSlackMessage(`❌ Error in reprocessing: ${error.message}`);
-    }
+    logWithTimestamp(`Error in reprocessing: ${error.message}`, 'error');
+    // Don't send errors to Slack, only log them to console
+    // await sendSlackMessage(`❌ Error in reprocessing: ${error.message}`);
     return false;
   }
 }

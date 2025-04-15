@@ -8,7 +8,7 @@ const { spawn } = require('child_process');
 const { launchBrowser, setupPage } = require('../browser/browser');
 const { login } = require('../services/auth');
 const { checkForNewReports, findNewReports, updateVisitedLinks } = require('../services/reports');
-const { initializeSlack, sendSlackMessage, formatReportForSlack, getMessagesForReport, getMessageHistory } = require('../services/slack');
+const { initializeSlack, sendSlackMessage, formatReportForSlack, getMessagesForReport, getMessageHistory, logMessage, logWithTimestamp, logError } = require('../services/slack');
 const { initializeGemini, getSummaryFromGemini } = require('../services/ai');
 const { extractContent } = require('../utils/content-extractor');
 const { loadCache, updateCache, createContentHash, needsProcessing } = require('../utils/cache');
@@ -31,7 +31,7 @@ const daemon = args.includes('--daemon');
 // Main function to process a single report
 async function processReport(page, report, cache) {
   try {
-    console.log(`Processing report: ${report.title}`);
+    logWithTimestamp(`Processing report: ${report.title}`);
     
     // Check if we've sent messages about this report before
     const previousMessages = await getMessagesForReport(report.url);
@@ -75,7 +75,7 @@ async function processReport(page, report, cache) {
       previousMessages: previousMessages
     };
   } catch (error) {
-    console.error(`Error processing report ${report.url}:`, error);
+    logError(`Error processing report ${report.url}`, error);
     
     // If there's an error, return a minimal valid report following the template
     const now = new Date().toISOString();
@@ -103,7 +103,7 @@ async function retryOperation(operation, maxRetries = 3, delay = 5000) {
       return await operation();
     } catch (error) {
       if (attempt === maxRetries) throw error;
-      console.log(`Attempt ${attempt} failed, retrying in ${delay/1000} seconds...`);
+      logWithTimestamp(`Attempt ${attempt} failed, retrying in ${delay/1000} seconds...`, 'warn');
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -111,10 +111,10 @@ async function retryOperation(operation, maxRetries = 3, delay = 5000) {
 
 // Main function to handle the complete flow
 async function runFullFlow() {
-  console.log(`=== Starting Delphi full flow: ${new Date().toISOString()} ===`);
+  logWithTimestamp(`=== Starting Delphi full flow: ${new Date().toISOString()} ===`);
   
   if (slackInitialized) {
-    await sendSlackMessage('🔍 Starting Delphi Digital full processing flow...');
+    await logMessage('🔍 Starting Delphi Digital full processing flow...', [], false);
   }
   
   const browser = await launchBrowser();
@@ -123,7 +123,7 @@ async function runFullFlow() {
     const page = await setupPage(browser);
     
     // Step 1: Login to Delphi with retry
-    console.log('Attempting to log in...');
+    logWithTimestamp('Attempting to log in...');
     const loginSuccess = await retryOperation(async () => {
       return await login(
         page, 
@@ -134,9 +134,9 @@ async function runFullFlow() {
     });
     
     if (!loginSuccess) {
-      console.log('Failed to log in after retries. Aborting process.');
+      logWithTimestamp('Failed to log in after retries. Aborting process.', 'error');
       if (slackInitialized) {
-        await sendSlackMessage('❌ Failed to log in to Delphi Digital after multiple attempts. Check credentials.');
+        await logMessage('❌ Failed to log in to Delphi Digital after multiple attempts. Check credentials.', [], true, 'error');
       }
       return false;
     }
@@ -149,9 +149,9 @@ async function runFullFlow() {
     });
     
     if (links.length === 0) {
-      console.log('Failed to get links from Delphi after retries. Aborting process.');
+      logWithTimestamp('Failed to get links from Delphi after retries. Aborting process.', 'error');
       if (slackInitialized) {
-        await sendSlackMessage('❌ Failed to retrieve links from Delphi Digital after multiple attempts.');
+        await logMessage('❌ Failed to retrieve links from Delphi Digital after multiple attempts.', [], true, 'error');
       }
       return false;
     }
@@ -163,7 +163,7 @@ async function runFullFlow() {
     const cache = await loadCache(appConfig.CACHE_FILE);
     
     // Load message history to check which reports have been sent
-    console.log('Loading Slack message history to check for previously sent reports...');
+    logWithTimestamp('Loading Slack message history to check for previously sent reports...');
     const messageHistory = await getMessageHistory(1000);
     const sentReportUrls = new Set(
       messageHistory
@@ -189,7 +189,7 @@ async function runFullFlow() {
         })
     );
     
-    console.log(`Found ${sentReportUrls.size} reports that have already been sent to Slack`);
+    logWithTimestamp(`Found ${sentReportUrls.size} reports that have already been sent to Slack`);
     
     // Step 4: Process each new report
     if (newLinks.length > 0) {
@@ -197,16 +197,16 @@ async function runFullFlow() {
       const reportsToProcess = newLinks.filter(report => !sentReportUrls.has(report.url));
       
       if (reportsToProcess.length === 0 && newLinks.length > 0) {
-        console.log('All new reports have already been sent to Slack');
-        await sendSlackMessage(`ℹ️ Found ${newLinks.length} new reports, but all have already been sent to Slack before.`);
+        logWithTimestamp('All new reports have already been sent to Slack');
+        await logMessage(`ℹ️ Found ${newLinks.length} new reports, but all have already been sent to Slack before.`, [], false);
       } else if (reportsToProcess.length < newLinks.length) {
-        console.log(`Found ${newLinks.length} new reports, but only ${reportsToProcess.length} need to be sent to Slack`);
+        logWithTimestamp(`Found ${newLinks.length} new reports, but only ${reportsToProcess.length} need to be sent to Slack`);
         const skippedReports = newLinks.filter(report => sentReportUrls.has(report.url));
         const skippedList = skippedReports.map(report => `• ${report.title}: ${report.url}`).join('\n');
-        await sendSlackMessage(`📊 Found ${newLinks.length} new reports, processing ${reportsToProcess.length} (skipping ${skippedReports.length} that were already sent).\n\nSkipped reports:\n${skippedList}`);
+        await logMessage(`📊 Found ${newLinks.length} new reports, processing ${reportsToProcess.length} (skipping ${skippedReports.length} that were already sent).\n\nSkipped reports:\n${skippedList}`, [], false);
       } else if (reportsToProcess.length > 0) {
-        console.log(`Found ${reportsToProcess.length} new reports`);
-        await sendSlackMessage(`🔍 Found ${reportsToProcess.length} new reports to process.`);
+        logWithTimestamp(`Found ${reportsToProcess.length} new reports`);
+        await logMessage(`🔍 Found ${reportsToProcess.length} new reports to process.`, [], false);
       }
       
       // Initialize arrays to track processed reports and those to be sent
@@ -223,10 +223,10 @@ async function runFullFlow() {
           if (!sentReportUrls.has(link.url)) {
             reportsToSend.push(result);
           } else {
-            console.log(`Skipping sending report "${link.title}" to Slack as it has already been sent before.`);
+            logWithTimestamp(`Skipping sending report "${link.title}" to Slack as it has already been sent before.`);
           }
         } catch (error) {
-          console.error(`Error processing report ${link.url}:`, error);
+          logError(`Error processing report ${link.url}`, error);
           // Continue with other reports even if one fails
         }
       }
@@ -239,7 +239,7 @@ async function runFullFlow() {
       
       // Step 6: Send new reports to Slack (only those that haven't been sent before)
       if (reportsToSend.length > 0) {
-        console.log(`Sending ${reportsToSend.length} new reports to Slack...`);
+        logWithTimestamp(`Sending ${reportsToSend.length} new reports to Slack...`);
         
         for (const resultItem of reportsToSend) {
           const { report, isUpdate, previousMessages } = resultItem;
@@ -264,93 +264,85 @@ async function runFullFlow() {
             });
           }
           
-          // Send the report to Slack
+          // Send the report to Slack (this should be sent to Slack as it's a report summary)
           if (slackInitialized) {
             await sendSlackMessage(messagePrefix, blocks);
-            console.log(`Sent report "${report.title}" to Slack.`);
+            logWithTimestamp(`Sent report "${report.title}" to Slack.`);
           }
         }
         
-        // Send notification that processing is complete
+        // Send notification that processing is complete (this should be sent to Slack as it's a summary)
         if (slackInitialized) {
-          await sendSlackMessage(`✅ Successfully processed and sent ${reportsToSend.length} new reports!`);
+          logWithTimestamp(`✅ Successfully processed and sent ${reportsToSend.length} new reports!`);
         }
       } else if (processedReports.length > 0) {
-        // We processed reports but none need to be sent to Slack
-        console.log('All processed reports have already been sent to Slack before.');
-        if (slackInitialized) {
-          await sendSlackMessage(`✅ Successfully processed ${processedReports.length} new reports, but all were already sent to Slack previously.`);
-        }
+        logWithTimestamp(`Processed ${processedReports.length} reports, but all were already sent to Slack`);
+        await logMessage(`✅ Successfully processed ${processedReports.length} new reports, but all were already sent to Slack previously.`, [], false);
       }
     } else {
-      console.log('No new reports to process.');
-      if (slackInitialized) {
-        await sendSlackMessage('😴 No new reports found from Delphi Digital.');
-      }
+      logWithTimestamp('No new reports found');
+      await logMessage('😴 No new reports found from Delphi Digital.', [], false);
     }
     
-    // Get previously processed reports that haven't been sent to Slack
-    const processedReportsToSend = visitedLinks.filter(link => 
-      link.summary && 
-      link.summary.length > 0 && 
-      !sentReportUrls.has(link.url)
-    );
+    // Step 7: Find reports in visited_links.json that have summaries but haven't been sent to Slack
+    logWithTimestamp('Checking for previously processed reports that need to be sent to Slack...');
     
+    // Get all reports that have summaries
+    const processedReportsWithSummaries = visitedLinks.filter(link => link.summary && link.summary.length > 0);
+    
+    // Filter to only those that have not been sent to Slack before
+    const processedReportsToSend = processedReportsWithSummaries.filter(report => !sentReportUrls.has(report.url));
+    
+    // Send these reports to Slack
     if (processedReportsToSend.length > 0) {
-      console.log(`Found ${processedReportsToSend.length} previously processed reports that haven't been sent to Slack`);
+      // Limit to 10 reports per run to avoid flooding Slack
+      const reportsToSendNow = processedReportsToSend.slice(0, 10);
+      const extraCount = processedReportsToSend.length > 10 ? 
+        `\n\n_Note: There are ${processedReportsToSend.length - 10} more reports that will be sent in subsequent runs._` : '';
       
-      // Send notification about reports that need to be sent
-      const reportList = processedReportsToSend.slice(0, 10).map(link => `• ${link.title}: ${link.url}`).join('\n');
-      const extraCount = processedReportsToSend.length > 10 ? `\n...and ${processedReportsToSend.length - 10} more` : '';
-      await sendSlackMessage(`📋 Sending ${processedReportsToSend.length} previously processed reports to Slack.\n${reportList}${extraCount}`);
+      const reportList = reportsToSendNow.map(report => `• ${report.title || 'Untitled'}: ${report.url}`).join('\n');
       
-      // Track successfully sent reports
+      // Log to console only, don't send to Slack (changed from true to false)
+      await logMessage(`📋 Sending ${processedReportsToSend.length} previously processed reports to Slack.\n${reportList}${extraCount}`, [], false);
+      
+      // Send each report
       let sentCount = 0;
-      
-      // Process each unsent report
-      for (const report of processedReportsToSend) {
+      for (const report of reportsToSendNow) {
+        logWithTimestamp(`Sending previously processed report to Slack: ${report.title}`);
+        
+        // Format the report for Slack
+        const blocks = formatReportForSlack(report);
+        
+        // Send the report to Slack (this should be sent to Slack as it's a report summary)
         try {
-          console.log(`Sending report to Slack: ${report.title}`);
-          
-          // Double-check one more time if message already exists
-          const reportMessages = await getMessagesForReport(report.url);
-          if (reportMessages.length > 0) {
-            console.log(`Skipping "${report.title}" as found ${reportMessages.length} existing message(s) containing this URL`);
-            continue;
-          }
-          
-          // Format the report for Slack
-          const blocks = formatReportForSlack(report);
-          
-          // Send the report to Slack
           await sendSlackMessage(`Report summary: ${report.title}`, blocks);
           sentCount++;
           
           // Add a small delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
-          console.error(`Error sending report "${report.title}" to Slack:`, error);
-          // Continue with other reports even if one fails
+          logError(`Error sending report to Slack`, error);
         }
       }
       
-      // Send notification that processing is complete
+      // Send notification that processing is complete - log to console only (don't send to Slack)
       if (sentCount > 0) {
-        await sendSlackMessage(`✅ Successfully sent ${sentCount} previously processed reports to Slack!`);
+        // Log locally but don't send to Slack
+        logWithTimestamp(`✅ Successfully sent ${sentCount} previously processed reports to Slack!`);
       } else {
-        await sendSlackMessage(`⚠️ Attempted to send ${processedReportsToSend.length} previously processed reports to Slack, but none were sent successfully.`);
+        // Log locally but don't send to Slack
+        logWithTimestamp(`⚠️ Attempted to send ${processedReportsToSend.length} previously processed reports to Slack, but none were sent successfully.`);
       }
     } else if (visitedLinks.some(link => link.summary && link.summary.length > 0)) {
-      console.log('All previously processed reports have already been sent to Slack');
-      await sendSlackMessage(`ℹ️ No previously processed reports to send - all have already been sent to Slack.`);
+      logWithTimestamp('All previously processed reports have already been sent to Slack');
+      // Log to console only (changed from true to false)
+      await logMessage(`ℹ️ No previously processed reports to send - all have already been sent to Slack.`, [], false);
     }
     
     return true;
   } catch (error) {
-    console.error('Error in full flow process:', error);
-    if (slackInitialized) {
-      await sendSlackMessage(`❌ Error in Delphi Digital flow: ${error.message}`);
-    }
+    logError('Error in full flow process', error);
+    // Don't send errors to Slack
     return false;
   } finally {
     await browser.close();
@@ -367,14 +359,14 @@ async function startDaemon() {
       
       // Check if process is still running
       process.kill(pid, 0);
-      console.log(`Delphi full flow is already running with PID ${pid}`);
+      logWithTimestamp(`Delphi full flow is already running with PID ${pid}`);
       return false;
     } catch (err) {
       // Process not running or PID file doesn't exist, which is fine
     }
     
     // Start the daemon
-    console.log('Starting Delphi full flow daemon...');
+    logWithTimestamp('Starting Delphi full flow daemon...');
     
     // Use node to run this script with the same arguments but without --daemon
     const args = process.argv.slice(2).filter(arg => arg !== '--daemon');
@@ -390,13 +382,13 @@ async function startDaemon() {
     // Write PID file
     await fs.writeFile(PID_FILE, child.pid.toString());
     
-    console.log(`Delphi full flow daemon started with PID ${child.pid}`);
-    console.log('The daemon will check for new reports every 24 hours by default.');
-    console.log('You can stop it using: npm run delphi:stop');
+    logWithTimestamp(`Delphi full flow daemon started with PID ${child.pid}`);
+    logWithTimestamp('The daemon will check for new reports every 24 hours by default.');
+    logWithTimestamp('You can stop it using: npm run delphi:stop');
     
     return true;
   } catch (error) {
-    console.error('Error starting daemon:', error);
+    logWithTimestamp('Error starting daemon:', error);
     return false;
   }
 }
@@ -411,7 +403,7 @@ async function scheduledExecution() {
     await runFullFlow();
   }, appConfig.CHECK_INTERVAL);
   
-  console.log(`Delphi flow scheduled. Next execution in ${appConfig.CHECK_INTERVAL / (60 * 60 * 1000)} hours`);
+  logWithTimestamp(`Delphi flow scheduled. Next execution in ${appConfig.CHECK_INTERVAL / (60 * 60 * 1000)} hours`);
 }
 
 // Main execution
