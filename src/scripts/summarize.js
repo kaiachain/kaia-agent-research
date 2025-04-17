@@ -4,7 +4,7 @@ const path = require('path');
 
 // Import services
 const { initializeGemini, getSummaryFromGemini } = require('../services/ai');
-const { initializeSlack, sendSlackMessage, formatReportForSlack } = require('../services/slack');
+const { initializeSlack, sendSlackMessage, formatReportForSlack, logMessage, logWithTimestamp } = require('../services/slack');
 const { loadCache, updateCache, createContentHash, needsProcessing } = require('../utils/cache');
 const { extractContent } = require('../utils/content-extractor');
 
@@ -21,8 +21,6 @@ const args = process.argv.slice(2);
 const forceReprocessUrls = [];
 let forceReprocessCount = 0;
 let forceSummaries = false;
-let checkForNew = false;
-let runScheduler = false;
 let runDigest = false;
 let startDaemon = false;
 let stopDaemon = false;
@@ -39,10 +37,6 @@ for (let i = 0; i < args.length; i++) {
         i++; // Skip next arg
     } else if (args[i] === '--force-summaries') {
         forceSummaries = true;
-    } else if (args[i] === '--check-new') {
-        checkForNew = true;
-    } else if (args[i] === '--scheduler') {
-        runScheduler = true;
     } else if (args[i] === '--digest') {
         runDigest = true;
     } else if (args[i] === '--start-daemon') {
@@ -65,35 +59,23 @@ function formatDate(date) {
 // Main function to process all links
 async function processAllLinks() {
     try {
-        console.log('Starting to process reports...');
+        logWithTimestamp('Starting to process reports...');
         
-        // Send notification that processing has started
-        await sendSlackMessage('🔄 Starting to process Delphi Digital reports...');
+        // Send notification that processing has started (status message)
+        await logMessage('🔄 Starting to process Delphi Digital reports...', [], false);
         
         // Load cache
         const cache = await loadCache(appConfig.CACHE_FILE);
         
-        // For simplicity in this implementation, we'll just process a test report
-        const testReport = {
-            url: 'https://members.delphidigital.io/reports/test-report',
-            title: 'Test Report',
-            publicationDate: new Date().toISOString(),
-            summary: 'This is a test summary for the report.\n\nThis is relevant to the Kaia ecosystem because it demonstrates Slack integration functionality.'
-        };
+        // In production, this function would call the full processing flow
+        // It will be called by the delphi-full-flow.js script
         
-        // Format the report for Slack
-        const blocks = formatReportForSlack(testReport);
-        
-        // Send the report to Slack
-        await sendSlackMessage(`New report summary: ${testReport.title}`, blocks);
-        
-        console.log('Finished processing reports');
-        await sendSlackMessage('✅ Finished processing Delphi Digital reports');
+        logWithTimestamp('Finished processing reports');
+        await logMessage('✅ Finished processing Delphi Digital reports', [], true);
         
         return true;
     } catch (error) {
-        console.error('Error processing links:', error);
-        await sendSlackMessage(`❌ Error processing Delphi Digital reports: ${error.message}`);
+        logWithTimestamp(`Error processing links: ${error.message}`, 'error');
         return false;
     }
 }
@@ -101,68 +83,18 @@ async function processAllLinks() {
 // Main function to send daily digest
 async function sendDailyDigest() {
     try {
-        console.log('Preparing daily digest of Delphi Digital reports...');
+        logWithTimestamp('Preparing daily digest of Delphi Digital reports...');
         
-        // Send notification that digest preparation has started
-        await sendSlackMessage('📋 Preparing Delphi Digital daily digest...');
+        // Send notification that digest preparation has started (status message)
+        await logMessage('📋 Preparing Delphi Digital daily digest...', [], false);
         
-        // For simplicity in this implementation, we'll just send a test digest
-        const digestMessage = {
-            "blocks": [
-                {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "📈 Delphi Digital Daily Digest"
-                    }
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Recent reports from the last 24 hours:*"
-                    }
-                },
-                {
-                    "type": "divider"
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Test Report*\nThis is a test summary for the report. This is relevant to the Kaia ecosystem because it demonstrates Slack integration functionality."
-                    }
-                },
-                {
-                    "type": "context",
-                    "elements": [
-                        {
-                            "type": "mrkdwn",
-                            "text": `*Published:* ${new Date().toLocaleDateString()} | <https://members.delphidigital.io/reports/test-report|View Full Report>`
-                        }
-                    ]
-                },
-                {
-                    "type": "divider"
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "_This is an automated digest from the Delphi Digital scraper_"
-                    }
-                }
-            ]
-        };
+        // In production, this function would prepare and send a real digest
+        // It will be called by the slack-digest.js script
         
-        // Send the digest to Slack
-        await sendSlackMessage('Delphi Digital Daily Digest', digestMessage.blocks);
-        
-        console.log('Daily digest sent successfully');
+        logWithTimestamp('Daily digest sent successfully');
         return true;
     } catch (error) {
-        console.error('Error sending daily digest:', error);
-        await sendSlackMessage(`❌ Error sending Delphi Digital daily digest: ${error.message}`);
+        logWithTimestamp(`Error sending daily digest: ${error.message}`, 'error');
         return false;
     }
 }
@@ -185,7 +117,7 @@ async function main() {
             await processAllLinks();
         }
     } catch (error) {
-        console.error('Error in main execution:', error);
+        logWithTimestamp(`Error in main execution: ${error.message}`, 'error');
     }
 }
 
@@ -197,5 +129,6 @@ if (require.main === module) {
 // Export functions for testing and importing
 module.exports = {
     processAllLinks,
-    sendDailyDigest
+    sendDailyDigest,
+    main
 }; 

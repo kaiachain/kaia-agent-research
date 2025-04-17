@@ -1,40 +1,36 @@
 services:
-  # Main service using the default Dockerfile
-  # If you encounter package version issues, use the rebuild-lock service below instead
+  # Main service
   delphi-scraper:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.rebuild-lock
     container_name: delphi-scraper
     restart: unless-stopped
     volumes:
-      - ./delphi_cookies.json:/app/delphi_cookies.json
-      - ./visited_links.json:/app/visited_links.json
-      - ./processed_reports_cache.json:/app/processed_reports_cache.json
+      - ./data:/app/src/data
+      - ./data/screenshots:/app/src/data/screenshots
+      - ./.env:/app/.env:ro
     env_file:
       - .env
     environment:
       - TZ=UTC
-    # Default command that runs the main application
-    command: node summarize.js
-    
-  # Alternative service that rebuilds package-lock.json during the build
-  # Uncomment and use this service if you face package version mismatch issues
-  # delphi-scraper-rebuild:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.rebuild-lock
-  #   container_name: delphi-scraper
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./delphi_cookies.json:/app/delphi_cookies.json
-  #     - ./visited_links.json:/app/visited_links.json
-  #     - ./processed_reports_cache.json:/app/processed_reports_cache.json
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     - TZ=UTC
-  #   command: node summarize.js
+      - NODE_ENV=production
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--no-first-run,--no-zygote,--single-process
+    healthcheck:
+      test: ["CMD", "node", "src/scripts/check-delphi.js", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: >
+      sh -c "
+        mkdir -p /app/src/data &&
+        mkdir -p /app/src/data/screenshots &&
+        if [ ! -f /app/src/data/delphi_cookies.json ]; then echo '{}' > /app/src/data/delphi_cookies.json; fi &&
+        if [ ! -f /app/src/data/visited_links.json ]; then echo '[]' > /app/src/data/visited_links.json; fi &&
+        if [ ! -f /app/src/data/processed_reports_cache.json ]; then echo '{}' > /app/src/data/processed_reports_cache.json; fi &&
+        if [ ! -f /app/src/data/unsent_reports.json ]; then echo '[]' > /app/src/data/unsent_reports.json; fi &&
+        npm run delphi:run"
     
   # Slack digest service
   slack-digest:
@@ -44,12 +40,42 @@ services:
     container_name: delphi-slack-digest
     restart: unless-stopped
     volumes:
-      - ./visited_links.json:/app/visited_links.json
+      - ./data:/app/src/data
     env_file:
       - .env
     environment:
       - TZ=UTC
-    command: node slack-digest.js
-    # This service is meant to be run manually or via external cron
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "node", "src/scripts/check-delphi.js", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: npm run digest
     profiles:
-      - digest 
+      - digest
+
+  # Webhook service for real-time notifications
+  webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delphi-webhook
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/src/data
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: npm run webhook
+    profiles:
+      - webhook 

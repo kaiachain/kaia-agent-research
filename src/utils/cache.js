@@ -1,5 +1,6 @@
 const fs = require('fs').promises;
 const crypto = require('crypto');
+const { logWithTimestamp, logError } = require('../services/slack');
 
 // Function to load cache
 async function loadCache(cachePath) {
@@ -8,12 +9,12 @@ async function loadCache(cachePath) {
     return JSON.parse(cacheData);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      console.log(`${cachePath} not found. Creating a new one.`);
+      logWithTimestamp(`${cachePath} not found. Creating a new one.`);
       const emptyCache = {};
       await fs.writeFile(cachePath, JSON.stringify(emptyCache, null, 2));
       return emptyCache;
     }
-    console.error(`Error loading cache from ${cachePath}:`, error);
+    logError(`Error loading cache from ${cachePath}`, error);
     return {};
   }
 }

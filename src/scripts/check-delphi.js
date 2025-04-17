@@ -4,7 +4,7 @@ const { config, loadConfigFromEnv } = require('../config/config');
 const { launchBrowser, setupPage } = require('../browser/browser');
 const { login } = require('../services/auth');
 const { checkForNewReports, findNewReports, updateVisitedLinks } = require('../services/reports');
-const { initializeSlack, sendSlackMessage } = require('../services/slack');
+const { initializeSlack, sendSlackMessage, logMessage, logWithTimestamp } = require('../services/slack');
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
@@ -12,15 +12,15 @@ const appConfig = loadConfigFromEnv();
 // Initialize Slack
 const slackInitialized = initializeSlack(process.env.SLACK_TOKEN, process.env.SLACK_CHANNEL_ID);
 if (slackInitialized) {
-  console.log('Slack integration initialized successfully');
+  logWithTimestamp('Slack integration initialized successfully');
 } else {
-  console.log('Warning: Slack integration not initialized. Check your SLACK_TOKEN and SLACK_CHANNEL_ID.');
+  logWithTimestamp('Warning: Slack integration not initialized. Check your SLACK_TOKEN and SLACK_CHANNEL_ID.', 'warn');
 }
 
 // Function to run the summarize.js script
 async function runSummarizeScript(count = 5) {
   return new Promise((resolve, reject) => {
-    console.log(`Running summarize.js to process newest ${count} reports...`);
+    logWithTimestamp(`Running summarize.js to process newest ${count} reports...`);
     
     const child = spawn('node', ['src/scripts/summarize.js', '--force-latest', count.toString()], {
       stdio: 'inherit'
@@ -28,16 +28,16 @@ async function runSummarizeScript(count = 5) {
     
     child.on('close', (code) => {
       if (code === 0) {
-        console.log('Successfully processed reports');
+        logWithTimestamp('Successfully processed reports');
         resolve(true);
       } else {
-        console.error(`summarize.js process exited with code ${code}`);
+        logWithTimestamp(`summarize.js process exited with code ${code}`, 'error');
         resolve(false); // Resolve with false rather than rejecting to avoid crashing
       }
     });
     
     child.on('error', (err) => {
-      console.error('Failed to run summarize.js:', err);
+      logWithTimestamp(`Failed to run summarize.js: ${err.message}`, 'error');
       resolve(false);
     });
   });
@@ -45,11 +45,11 @@ async function runSummarizeScript(count = 5) {
 
 // Main function to check Delphi website
 async function checkDelphiWebsite() {
-  console.log(`=== Delphi Check: ${new Date().toISOString()} ===`);
+  logWithTimestamp(`=== Delphi Check: ${new Date().toISOString()} ===`);
   
-  // Send Slack notification about check starting
+  // Send Slack notification about check starting (status message)
   if (slackInitialized) {
-    await sendSlackMessage('🔍 Starting Delphi Digital check for new reports...');
+    await logMessage('🔍 Starting Delphi Digital check for new reports...', [], false);
   }
   
   const browser = await launchBrowser();
@@ -58,7 +58,7 @@ async function checkDelphiWebsite() {
     const page = await setupPage(browser);
     
     // Login
-    console.log('Attempting to log in...');
+    logWithTimestamp('Attempting to log in...');
     const loginSuccess = await login(
       page, 
       process.env.DELPHI_EMAIL, 
@@ -67,9 +67,9 @@ async function checkDelphiWebsite() {
     );
     
     if (!loginSuccess) {
-      console.log('Failed to log in. Aborting check.');
+      logWithTimestamp('Failed to log in. Aborting check.', 'error');
       if (slackInitialized) {
-        await sendSlackMessage('❌ Failed to log in to Delphi Digital. Check credentials.');
+        await logMessage('❌ Failed to log in to Delphi Digital. Check credentials.', [], true, 'error');
       }
       return false;
     }
@@ -78,9 +78,9 @@ async function checkDelphiWebsite() {
     const links = await checkForNewReports(page, appConfig.DELPHI_URL);
     
     if (links.length === 0) {
-      console.log('Failed to get links from Delphi. Aborting check.');
+      logWithTimestamp('Failed to get links from Delphi. Aborting check.', 'error');
       if (slackInitialized) {
-        await sendSlackMessage('❌ Failed to retrieve links from Delphi Digital.');
+        await logMessage('❌ Failed to retrieve links from Delphi Digital.', [], true, 'error');
       }
       return false;
     }
@@ -89,10 +89,10 @@ async function checkDelphiWebsite() {
     const { newLinks, visitedLinks } = await findNewReports(links, appConfig.VISITED_LINKS_FILE);
     
     if (newLinks.length > 0) {
-      // Send notification about new reports
+      // Send notification about new reports (this is a summary, so send to Slack)
       if (slackInitialized) {
         const reportList = newLinks.map(link => `• ${link.title || 'Untitled'}: ${link.url}`).join('\n');
-        await sendSlackMessage(`🎉 Found ${newLinks.length} new reports!\n${reportList}\n\nProcessing and generating summaries...`);
+        await logMessage(`🎉 Found ${newLinks.length} new reports!\n${reportList}\n\nProcessing and generating summaries...`, [], true);
       }
       
       // Update visited links with new ones
@@ -101,22 +101,23 @@ async function checkDelphiWebsite() {
       // Run the summarize.js script to process new reports
       await runSummarizeScript(Math.min(newLinks.length, 5));
       
-      // Send notification that processing is complete
+      // Send notification that processing is complete (summary notification)
       if (slackInitialized) {
-        await sendSlackMessage(`✅ Processing completed for ${Math.min(newLinks.length, 5)} reports.`);
+        await logMessage(`✅ Processing completed for ${Math.min(newLinks.length, 5)} reports.`, [], true);
       }
     } else {
-      console.log('No new reports to process. Will check again later.');
+      logWithTimestamp('No new reports to process. Will check again later.');
       if (slackInitialized) {
-        await sendSlackMessage('😴 No new reports found from Delphi Digital.');
+        await logMessage('😴 No new reports found from Delphi Digital.', [], false);
       }
     }
     
     return true;
   } catch (error) {
-    console.error('Error in checkDelphiWebsite:', error);
+    logWithTimestamp(`Error in checkDelphiWebsite: ${error.message}`, 'error');
     if (slackInitialized) {
-      await sendSlackMessage(`❌ Error checking Delphi Digital: ${error.message}`);
+      // Don't send errors to Slack, only log them to console
+      // await logMessage(`❌ Error checking Delphi Digital: ${error.message}`, [], true, 'error');
     }
     return false;
   } finally {
@@ -128,12 +129,12 @@ async function checkDelphiWebsite() {
 function scheduleChecks() {
   // Run the initial check
   checkDelphiWebsite().then(success => {
-    console.log(`Initial Delphi check ${success ? 'completed' : 'failed'}`);
+    logWithTimestamp(`Initial Delphi check ${success ? 'completed' : 'failed'}`);
     
     // Schedule regular checks
     setInterval(() => {
       checkDelphiWebsite().then(success => {
-        console.log(`Scheduled Delphi check ${success ? 'completed' : 'failed'}`);
+        logWithTimestamp(`Scheduled Delphi check ${success ? 'completed' : 'failed'}`);
       });
     }, appConfig.CHECK_INTERVAL);
   });
@@ -153,4 +154,4 @@ if (require.main === module) {
 }
 
 // Log the next scheduled check
-console.log(`Delphi checker started. Next check in ${appConfig.CHECK_INTERVAL / (60 * 60 * 1000)} hours`); 
+logWithTimestamp(`Delphi checker started. Next check in ${appConfig.CHECK_INTERVAL / (60 * 60 * 1000)} hours`); 

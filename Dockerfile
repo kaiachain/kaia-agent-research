@@ -1,11 +1,13 @@
 FROM node:20-slim
 
-# Install dependencies for Puppeteer
+# Install Chromium and dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     ca-certificates \
     procps \
+    curl \
+    chromium \
     libx11-xcb1 \
     libxcomposite1 \
     libxcursor1 \
@@ -25,28 +27,35 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app directory
+# Create app directory and ensure proper permissions
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files
 COPY package*.json ./
-RUN npm install --omit=dev
+
+# Install production dependencies
+RUN npm ci --only=production
 
 # Copy application code
 COPY . .
 
-# Create data directory for persistent storage
-RUN mkdir -p src/data
-
-# Create volume mount points for persisting data
-VOLUME ["/app/src/data/delphi_cookies.json", "/app/src/data/visited_links.json", "/app/src/data/processed_reports_cache.json", "/app/src/data/backups"]
+# Create necessary directories and set permissions
+RUN mkdir -p /app/src/data && \
+    mkdir -p /app/src/data/screenshots && \
+    chown -R node:node /app/src/data && \
+    chown -R node:node /app/src/data/screenshots
 
 # Set environment variables
 ENV NODE_ENV=production \
-    COOKIES_FILE=/app/src/data/delphi_cookies.json \
-    CACHE_FILE=/app/src/data/processed_reports_cache.json \
-    VISITED_LINKS_FILE=/app/src/data/visited_links.json \
-    BACKUPS_DIR=/app/src/data/backups
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Run the application
-CMD ["node", "src/scripts/summarize.js"] 
+# Switch to non-root user
+USER node
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node src/scripts/check-delphi.js --health-check || exit 1
+
+# Default command (can be overridden by docker-compose)
+CMD ["npm", "run", "delphi:run"] 

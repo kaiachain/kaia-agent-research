@@ -4057,5 +4057,164 @@
     "messageId": "1744618016.666279",
     "channel": "C08LRUYEF8F",
     "text": "⚠️ Attempted to send 3 previously processed reports to Slack, but none were sent successfully."
+  },
+  {
+    "timestamp": "2025-04-15T03:07:56.725Z",
+    "messageId": "1744686476.558709",
+    "channel": "C08LRUYEF8F",
+    "text": "❌ Error in Delphi Digital flow: ENOENT: no such file or directory, open '/app/src/data/screenshots/current-page-state.png'"
+  },
+  {
+    "timestamp": "2025-04-15T03:18:13.214Z",
+    "messageId": "1744687093.028729",
+    "channel": "C08LRUYEF8F",
+    "text": "😴 No new reports found from Delphi Digital."
+  },
+  {
+    "timestamp": "2025-04-15T03:18:13.536Z",
+    "messageId": "1744687093.400259",
+    "channel": "C08LRUYEF8F",
+    "text": "📋 Sending 3 previously processed reports to Slack.\n• Celestia's Roadmap: $TIA Time, or is DA a Commodity?: https://members.delphidigital.io/reports/celestias-roadmap-tia-time-or-is-da-a-commodity\n• The Year Ahead for Infra 2025: https://members.delphidigital.io/reports/the-year-ahead-for-infra-2025\n• The Year Ahead for Markets 2025: https://members.delphidigital.io/reports/year-ahead-for-markets-2025"
+  },
+  {
+    "timestamp": "2025-04-15T03:18:13.959Z",
+    "messageId": "1744687093.750819",
+    "channel": "C08LRUYEF8F",
+    "text": "Report summary: Celestia's Roadmap: $TIA Time, or is DA a Commodity?",
+    "blocks": [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": "Celestia's Roadmap: $TIA Time, or is DA a Commodity?"
+        }
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Summary:*\n1. Delphi Digital reviews Celestia, with discussions on its roadmap and whether data availability (DA) is becoming a commodity."
+        }
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Relevance to Kaia:*\nRelevance: Kaia could benefit from understanding the DA landscape to optimize its own data storage and availability solutions.\n"
+        }
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Published:*\n1/18/2025"
+          },
+          {
+            "type": "mrkdwn",
+            "text": "*Source:*\n<https://members.delphidigital.io/reports/celestias-roadmap-tia-time-or-is-da-a-commodity|View Original Report>"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-15T03:18:15.287Z",
+    "messageId": "1744687095.151259",
+    "channel": "C08LRUYEF8F",
+    "text": "Report summary: The Year Ahead for Infra 2025",
+    "blocks": [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": "The Year Ahead for Infra 2025"
+        }
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Summary:*\n1.  Solana leads in high-throughput blockchains, L2s are consolidating, and ZK technology is advancing rapidly, driving scalability, with key innovations in ZKVMs, hardware acceleration, and proof systems."
+        }
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Relevance to Kaia:*\nRelevance: Kaia's focus on ZK and efficient computation aligns with the report's emphasis on these technologies for scaling and privacy.\n"
+        }
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Published:*\n12/13/2024"
+          },
+          {
+            "type": "mrkdwn",
+            "text": "*Source:*\n<https://members.delphidigital.io/reports/the-year-ahead-for-infra-2025|View Original Report>"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-15T03:18:16.615Z",
+    "messageId": "1744687096.473869",
+    "channel": "C08LRUYEF8F",
+    "text": "Report summary: The Year Ahead for Markets 2025",
+    "blocks": [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": "The Year Ahead for Markets 2025"
+        }
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Summary:*\n1. Crypto markets are entering 2025 with optimism, driven by institutional adoption, stablecoin growth, and emerging sectors, while Solana is positioned for continued growth."
+        }
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Relevance to Kaia:*\nRelevance: Understanding market trends and technological advancements helps inform Kaia's strategic direction and potential integrations.\n"
+        }
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Published:*\n12/11/2024"
+          },
+          {
+            "type": "mrkdwn",
+            "text": "*Source:*\n<https://members.delphidigital.io/reports/year-ahead-for-markets-2025|View Original Report>"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-15T03:18:18.164Z",
+    "messageId": "1744687097.959399",
+    "channel": "C08LRUYEF8F",
+    "text": "✅ Successfully sent 3 previously processed reports to Slack!"
   }
 ]

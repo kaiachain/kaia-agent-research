@@ -21,6 +21,7 @@ A tool for automatically scraping, summarizing, and processing Delphi Digital re
 - [Docker Setup](#docker-setup)
 - [Troubleshooting](#troubleshooting)
 - [Implementation Guide](#implementation-guide)
+- [Error Handling](#error-handling)
 - [License](#license)
 
 ## Project Structure
@@ -198,6 +199,24 @@ Common issues and solutions:
    - Check container logs: `docker-compose logs`
    - Verify volume permissions
    - For Puppeteer errors, check container has all required dependencies
+
+## Error Handling
+
+The system is configured to handle errors gracefully:
+
+- All errors are logged to the console with timestamps for debugging
+- Errors are NOT sent to Slack to avoid cluttering the channel
+- Only report summaries and critical success notifications are sent to Slack
+
+If you need to debug issues:
+
+1. Check the console logs for detailed error messages and stack traces
+2. Look for log entries with timestamp format `[YYYY-MM-DDThh:mm:ss.sssZ] ERROR: ...`
+3. Use the Docker container logs if running in Docker: `docker-compose logs -f`
+
+If you want to modify this behavior, you can:
+- Edit the `logError` function in `src/services/slack.js` 
+- Uncomment the error notification lines in the catch blocks if you want errors in Slack
 
 ## License
 

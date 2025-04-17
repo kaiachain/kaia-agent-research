@@ -1,9 +1,28 @@
 const fs = require('fs').promises;
+const path = require('path');
+const { logWithTimestamp, logError } = require('./slack');
+
+// Determine screenshot directory with platform-independence
+const SCREENSHOTS_DIR = path.join(process.cwd(), 'src/data/screenshots');
+
+// Ensure screenshots directory exists
+async function ensureScreenshotsDir() {
+  try {
+    await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
+    return true;
+  } catch (error) {
+    logError(`Error creating screenshots directory: ${error.message}`, error);
+    return false;
+  }
+}
 
 // Function to check for new reports
 async function checkForNewReports(page, url) {
   try {
-    console.log('Checking for new reports...');
+    // Create screenshots directory if it doesn't exist
+    await ensureScreenshotsDir();
+    
+    logWithTimestamp('Checking for new reports...');
     console.log(`Navigating to URL: ${url}`);
     
     // Add retry logic for navigation
@@ -62,7 +81,8 @@ async function checkForNewReports(page, url) {
     console.log('Page metrics:', JSON.stringify(metrics, null, 2));
     
     // Take a screenshot of the current state
-    await page.screenshot({ path: 'current-page-state.png', fullPage: true });
+    const screenshotPath = path.join(SCREENSHOTS_DIR, 'current-page-state.png');
+    await page.screenshot({ path: screenshotPath, fullPage: true });
     
     // Extract links from the current page
     const links = await page.evaluate(() => {
@@ -112,8 +132,8 @@ async function checkForNewReports(page, url) {
     console.log('Element details:', JSON.stringify(links.debug.elementDetails, null, 2));
     
     // Save the current page content for verification
-    const content = await page.content();
-    await fs.writeFile('current-page.html', content);
+    const contentPath = path.join(SCREENSHOTS_DIR, 'current-page.html');
+    await fs.writeFile(contentPath, await page.content());
     
     // Prepare links
     const now = new Date().toISOString();
@@ -140,15 +160,16 @@ async function checkForNewReports(page, url) {
     
     return preparedLinks;
   } catch (error) {
-    console.error('Error in checkForNewReports:', error);
+    logError('Error in checkForNewReports', error);
     // Save error state
     try {
-      const errorContent = await page.content();
-      await fs.writeFile('error-state.html', errorContent);
-      await page.screenshot({ path: 'error-state.png', fullPage: true });
-      console.log('Error state saved to error-state.html and error-state.png');
+      const errorContentPath = path.join(SCREENSHOTS_DIR, 'error-state.html');
+      const errorScreenshotPath = path.join(SCREENSHOTS_DIR, 'error-state.png');
+      await fs.writeFile(errorContentPath, await page.content());
+      await page.screenshot({ path: errorScreenshotPath, fullPage: true });
+      logWithTimestamp('Error state saved to error-state.html and error-state.png in screenshots directory');
     } catch (debugError) {
-      console.error('Failed to save error state:', debugError);
+      logError('Failed to save error state', debugError);
     }
     throw error;
   }
@@ -185,16 +206,16 @@ async function findNewReports(links, visitedLinksPath) {
     const visitedLinks = JSON.parse(jsonData);
     const visitedUrls = new Set(visitedLinks.map(link => link.url));
     
-    console.log(`Currently have ${visitedLinks.length} reports in ${visitedLinksPath}`);
+    logWithTimestamp(`Currently have ${visitedLinks.length} reports in ${visitedLinksPath}`);
     
     // Find new links
     const newLinks = links.filter(link => !visitedUrls.has(link.url));
     
     if (newLinks.length === 0) {
-      console.log('No new reports found');
+      logWithTimestamp('No new reports found');
     } else {
-      console.log(`Found ${newLinks.length} new reports!`);
-      newLinks.forEach(link => console.log(`- ${link.title}: ${link.url}`));
+      logWithTimestamp(`Found ${newLinks.length} new reports!`);
+      newLinks.forEach(link => logWithTimestamp(`- ${link.title}: ${link.url}`));
     }
     
     return {
@@ -202,9 +223,9 @@ async function findNewReports(links, visitedLinksPath) {
       visitedLinks
     };
   } catch (error) {
-    console.error('Error finding new reports:', error);
+    logError('Error finding new reports', error);
     if (error.code === 'ENOENT') {
-      console.log(`${visitedLinksPath} not found. Creating a new one.`);
+      logWithTimestamp(`${visitedLinksPath} not found. Creating a new one.`);
       
       // Initialize with all fields according to the template
       const now = new Date().toISOString();
@@ -245,37 +266,69 @@ async function findNewReports(links, visitedLinksPath) {
 // Function to update visited links
 async function updateVisitedLinks(newLinks, visitedLinks, visitedLinksPath) {
   try {
-    // Create backup of current visited_links.json
-    const timestamp = new Date().toISOString().replace(/:/g, '-');
-    const backupPath = `backups/visited_links.${timestamp}.json`;
+    // First, create a backup of the current file
+    const backupDir = path.join(process.cwd(), 'src/data/backups');
     
-    // Ensure backups directory exists
-    await fs.mkdir('backups', { recursive: true });
+    try {
+      await fs.mkdir(backupDir, { recursive: true });
+      const timestamp = new Date().toISOString().replace(/:/g, '-');
+      const backupPath = path.join(backupDir, `visited_links_${timestamp}.json`);
+      
+      // Only backup if the file exists
+      try {
+        const currentData = await fs.readFile(visitedLinksPath, 'utf8');
+        await fs.writeFile(backupPath, currentData);
+        logWithTimestamp(`Created backup at ${backupPath}`);
+      } catch (backupError) {
+        if (backupError.code !== 'ENOENT') {
+          logError(`Error creating backup`, backupError);
+        }
+      }
+    } catch (error) {
+      logError(`Failed to create backup directory`, error);
+    }
     
-    // Save backup
-    await fs.writeFile(backupPath, JSON.stringify(visitedLinks, null, 2));
-    console.log(`Backup created at ${backupPath}`);
+    // Combine existing and new links, ensuring no duplicates
+    const existingUrlMap = new Map();
     
-    // Validate and ensure all newLinks have all required fields
-    const now = new Date().toISOString();
-    const validatedNewLinks = newLinks.map(link => {
-      return {
-        url: link.url,
-        title: link.title || "Untitled Report",
-        body: link.body || "",
-        timestamp: link.timestamp || now,
-        scrapedAt: link.scrapedAt || now,
-        lastChecked: link.lastChecked || now,
-        summary: link.summary || "",
-        publicationDate: link.publicationDate || now
-      };
+    // Add existing links to the map
+    visitedLinks.forEach(link => {
+      existingUrlMap.set(link.url, link);
     });
     
-    // Update visited links with new ones
-    const updatedVisitedLinks = [...visitedLinks, ...validatedNewLinks];
+    // Update or add new links
+    newLinks.forEach(newLink => {
+      const now = new Date().toISOString();
+      
+      // If the link already exists, update lastChecked and possibly other fields
+      if (existingUrlMap.has(newLink.url)) {
+        const existingLink = existingUrlMap.get(newLink.url);
+        existingLink.lastChecked = now;
+        
+        // Only update title if the new one is more descriptive
+        if (newLink.title && (!existingLink.title || existingLink.title === "Untitled Report")) {
+          existingLink.title = newLink.title;
+        }
+        
+        // Update other fields as needed
+        if (newLink.summary && newLink.summary.length > 0) {
+          existingLink.summary = newLink.summary;
+        }
+        
+        if (newLink.publicationDate) {
+          existingLink.publicationDate = newLink.publicationDate;
+        }
+      } else {
+        // Add new link
+        existingUrlMap.set(newLink.url, newLink);
+      }
+    });
+    
+    // Convert map back to array
+    const updatedLinks = Array.from(existingUrlMap.values());
     
     // Sort by publicationDate in descending order (newest first)
-    updatedVisitedLinks.sort((a, b) => {
+    updatedLinks.sort((a, b) => {
       // Extract dates for comparison
       const dateA = new Date(a.publicationDate || 0);
       const dateB = new Date(b.publicationDate || 0);
@@ -284,19 +337,20 @@ async function updateVisitedLinks(newLinks, visitedLinks, visitedLinksPath) {
       return dateB - dateA;
     });
     
-    // Save updated visited links
-    await fs.writeFile(visitedLinksPath, JSON.stringify(updatedVisitedLinks, null, 2));
-    console.log(`Updated ${visitedLinksPath} with ${validatedNewLinks.length} new reports and sorted by publication date`);
+    // Save updated list
+    await fs.writeFile(visitedLinksPath, JSON.stringify(updatedLinks, null, 2));
+    logWithTimestamp(`Updated ${visitedLinksPath} with ${newLinks.length} new links`);
     
-    return updatedVisitedLinks;
+    return updatedLinks;
   } catch (error) {
-    console.error('Error updating visited links:', error);
-    return visitedLinks;
+    logError(`Error updating visited links`, error);
+    throw error;
   }
 }
 
 module.exports = {
   checkForNewReports,
   findNewReports,
-  updateVisitedLinks
+  updateVisitedLinks,
+  autoScroll
 }; 

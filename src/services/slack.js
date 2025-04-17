@@ -7,10 +7,25 @@ let slack = null;
 let slackChannel = null;
 let messageHistoryFile = null;
 
+// Utility function to log with timestamp
+function logWithTimestamp(message, level = 'info') {
+  const timestamp = new Date().toISOString();
+  switch(level) {
+    case 'error':
+      console.error(`[${timestamp}] ERROR: ${message}`);
+      break;
+    case 'warn':
+      console.warn(`[${timestamp}] WARN: ${message}`);
+      break;
+    default:
+      console.log(`[${timestamp}] INFO: ${message}`);
+  }
+}
+
 // Initialize Slack client
 function initializeSlack(token, channelId, historyFilePath = null) {
   if (!token || !channelId) {
-    console.log('Slack credentials not configured');
+    logWithTimestamp('Slack credentials not configured');
     return false;
   }
   
@@ -34,7 +49,7 @@ async function loadMessageHistory() {
       await fs.writeFile(messageHistoryFile, JSON.stringify([], null, 2));
       return [];
     }
-    console.error('Error loading message history:', error);
+    logWithTimestamp('Error loading message history: ' + error.message, 'error');
     return [];
   }
 }
@@ -50,16 +65,35 @@ async function saveMessageHistory(history) {
     await fs.writeFile(messageHistoryFile, JSON.stringify(history, null, 2));
     return true;
   } catch (error) {
-    console.error('Error saving message history:', error);
+    logWithTimestamp('Error saving message history: ' + error.message, 'error');
     return false;
   }
+}
+
+/**
+ * Log a message to the console with timestamp and optionally send to Slack
+ * @param {string} message - The message to log
+ * @param {Array} blocks - Slack blocks for formatting (if sending to Slack)
+ * @param {boolean} sendToSlack - Whether to send this message to Slack
+ * @param {string} level - Log level (info, warn, error)
+ */
+async function logMessage(message, blocks = [], sendToSlack = false, level = 'info') {
+  // Always log to console
+  logWithTimestamp(message, level);
+  
+  // Only send to Slack if explicitly requested
+  if (sendToSlack) {
+    return await sendSlackMessage(message, blocks);
+  }
+  
+  return true;
 }
 
 // Function to send message to Slack
 async function sendSlackMessage(message, blocks = []) {
   try {
     if (!slack || !slackChannel) {
-      console.log('Slack not initialized, skipping notification');
+      logWithTimestamp('Slack not initialized, skipping notification');
       return false;
     }
 
@@ -69,7 +103,7 @@ async function sendSlackMessage(message, blocks = []) {
       blocks: blocks.length > 0 ? blocks : undefined
     });
 
-    console.log(`Message sent to Slack: ${result.ts}`);
+    logWithTimestamp(`Message sent to Slack: ${result.ts}`);
     
     // Store message in history
     const messageRecord = {
@@ -87,7 +121,7 @@ async function sendSlackMessage(message, blocks = []) {
     
     return true;
   } catch (error) {
-    console.error('Error sending message to Slack:', error);
+    logWithTimestamp('Error sending message to Slack: ' + error.message, 'error');
     return false;
   }
 }
@@ -98,7 +132,7 @@ async function getMessageHistory(limit = 100) {
     const history = await loadMessageHistory();
     return history.slice(-limit); // Return the most recent messages up to the limit
   } catch (error) {
-    console.error('Error getting message history:', error);
+    logWithTimestamp('Error getting message history: ' + error.message, 'error');
     return [];
   }
 }
@@ -133,7 +167,7 @@ async function getMessagesForReport(reportUrl, limit = 10) {
     
     return reportMessages.slice(-limit); // Return the most recent messages up to the limit
   } catch (error) {
-    console.error('Error getting messages for report:', error);
+    logWithTimestamp('Error getting messages for report: ' + error.message, 'error');
     return [];
   }
 }
@@ -142,7 +176,7 @@ async function getMessagesForReport(reportUrl, limit = 10) {
 async function getSlackMessage(ts) {
   try {
     if (!slack || !slackChannel) {
-      console.log('Slack not initialized, cannot retrieve message');
+      logWithTimestamp('Slack not initialized, cannot retrieve message', 'warn');
       return null;
     }
     
@@ -159,7 +193,7 @@ async function getSlackMessage(ts) {
     
     return null;
   } catch (error) {
-    console.error('Error retrieving message from Slack:', error);
+    logWithTimestamp('Error retrieving message from Slack: ' + error.message, 'error');
     return null;
   }
 }
@@ -221,9 +255,27 @@ function formatReportForSlack(report) {
   ];
 }
 
+/**
+ * Log error messages to console with timestamps but never send to Slack
+ * @param {string} errorMessage - The error message to log
+ * @param {Error} [error] - Optional error object for stack trace
+ */
+function logError(errorMessage, error = null) {
+  // Always log to console with timestamp, never to Slack
+  logWithTimestamp(errorMessage, 'error');
+  
+  // If error object provided, log stack trace for debugging
+  if (error && error.stack) {
+    logWithTimestamp(`Stack trace: ${error.stack}`, 'error');
+  }
+}
+
 module.exports = {
   initializeSlack,
   sendSlackMessage,
+  logMessage,
+  logWithTimestamp,
+  logError,
   formatReportForSlack,
   getMessageHistory,
   getMessagesForReport,
