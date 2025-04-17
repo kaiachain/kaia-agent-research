@@ -37,8 +37,19 @@ async function processReport(page, report, cache) {
     const previousMessages = await getMessagesForReport(report.url);
     const isUpdate = previousMessages.length > 0;
     
-    // Extract content from the report page
-    const articleContent = await extractContent(page, report.url);
+    // Known problematic URLs that need special handling
+    const problematicUrls = [
+      'policy-formulation-survival-guide-for-security-status'
+    ];
+    
+    // Check if this URL contains any problematic patterns
+    const needsSpecialHandling = problematicUrls.some(pattern => 
+      report.url.includes(pattern)
+    );
+    
+    // Extract content from the report page with retry mechanism
+    let maxRetries = needsSpecialHandling ? 5 : 3; // More retries for problematic URLs
+    const articleContent = await extractContent(page, report.url, maxRetries);
     
     // Generate a summary using AI
     let summary = await getSummaryFromGemini(articleContent.title, articleContent.content);

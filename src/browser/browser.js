@@ -281,7 +281,7 @@ async function launchBrowser() {
       puppeteerArgs = process.env.PUPPETEER_ARGS.split(',');
     }
 
-    // Get default arguments for the browser
+    // Enhanced default arguments for the browser
     const defaultArgs = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -289,7 +289,25 @@ async function launchBrowser() {
       '--disable-accelerated-2d-canvas',
       '--no-first-run',
       '--no-zygote',
-      '--disable-gpu'
+      '--disable-gpu',
+      '--disable-notifications',
+      '--disable-extensions',
+      '--disable-component-extensions-with-background-pages',
+      '--disable-default-apps',
+      '--mute-audio',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-background-networking',
+      '--disable-breakpad',
+      '--disable-sync',
+      '--disable-translate',
+      '--metrics-recording-only',
+      '--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees,MediaRouter',
+      '--disable-hang-monitor',
+      '--disable-ipc-flooding-protection',
+      `--js-flags=--max-old-space-size=2048`,
+      '--deterministic-fetch' // Make network fetches more reliable
     ];
     
     // Combine default args with any provided args, removing duplicates
@@ -301,7 +319,15 @@ async function launchBrowser() {
       executablePath,
       args,
       ignoreHTTPSErrors: true,
-      timeout: 60000
+      timeout: 120000, // Increase timeout to 120 seconds
+      defaultViewport: {
+        width: 1280,
+        height: 1024
+      },
+      handleSIGINT: false, // Prevent Puppeteer from closing browser on Ctrl+C
+      handleSIGTERM: false, // Prevent Puppeteer from closing browser on SIGTERM
+      handleSIGHUP: false, // Prevent Puppeteer from closing browser on SIGHUP
+      protocolTimeout: 120000 // Increase protocol command timeout
     };
     
     // Launch the browser
@@ -326,8 +352,36 @@ async function setupPage(browser) {
   await page.setViewport({ width: 1280, height: 800 });
   await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
   
-  // Set timeout
-  page.setDefaultNavigationTimeout(60000);
+  // Set increased timeout
+  page.setDefaultNavigationTimeout(120000); // Increase to 120 seconds
+  
+  // Enable JavaScript error collection
+  await page.evaluateOnNewDocument(() => {
+    window.addEventListener('error', (e) => {
+      console.error('Browser JS error:', e.message, e.error?.stack || '');
+    });
+  });
+  
+  // Block unnecessary resources to improve performance
+  await page.setRequestInterception(true);
+  page.on('request', (request) => {
+    const resourceType = request.resourceType();
+    // Block unnecessary resources that might cause timeouts
+    if (['image', 'media', 'font', 'stylesheet'].includes(resourceType)) {
+      request.abort();
+    } else {
+      request.continue();
+    }
+  });
+  
+  // Add additional error handling
+  page.on('error', err => {
+    console.error('Page crashed:', err);
+  });
+  
+  page.on('pageerror', err => {
+    console.error('Page error:', err);
+  });
   
   return page;
 }
