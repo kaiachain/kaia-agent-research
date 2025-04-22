@@ -1,6 +1,7 @@
 const { WebClient } = require('@slack/web-api');
 const fs = require('fs').promises;
 const path = require('path');
+const config = require('../config/config').loadConfigFromEnv(); // Import config
 
 // Initialize Slack client when module is loaded
 let slack = null;
@@ -33,7 +34,7 @@ function initializeSlack(token, channelId, historyFilePath = null) {
   slackChannel = channelId;
   
   // Set default message history file if not provided
-  messageHistoryFile = historyFilePath || path.join(process.cwd(), 'src/data/slack_message_history.json');
+  messageHistoryFile = historyFilePath || config.HISTORY_FILE; // Use configured path
   
   return true;
 }

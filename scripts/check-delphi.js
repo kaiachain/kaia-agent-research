@@ -22,7 +22,7 @@ async function runSummarizeScript(count = 5) {
   return new Promise((resolve, reject) => {
     logWithTimestamp(`Running summarize.js to process newest ${count} reports...`);
     
-    const child = spawn('node', ['src/scripts/summarize.js', '--force-latest', count.toString()], {
+    const child = spawn('node', ['scripts/summarize.js', '--force-latest', count.toString()], {
       stdio: 'inherit'
     });
     

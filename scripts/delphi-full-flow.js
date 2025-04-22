@@ -18,8 +18,8 @@ const { config, loadConfigFromEnv } = require('../config/config');
 const appConfig = loadConfigFromEnv();
 
 // Initialize services
-const geminiInitialized = initializeGemini(process.env.GEMINI_API_KEY);
-const slackInitialized = initializeSlack(process.env.SLACK_TOKEN, process.env.SLACK_CHANNEL_ID);
+const geminiInitialized = initializeGemini(appConfig.GEMINI_API_KEY);
+const slackInitialized = initializeSlack(appConfig.SLACK_TOKEN, appConfig.SLACK_CHANNEL_ID);
 
 // PID file path
 const PID_FILE = path.join(process.cwd(), 'delphi-checker.pid');
@@ -138,8 +138,8 @@ async function runFullFlow() {
     const loginSuccess = await retryOperation(async () => {
       return await login(
         page, 
-        process.env.DELPHI_EMAIL, 
-        process.env.DELPHI_PASSWORD, 
+        appConfig.DELPHI_EMAIL, 
+        appConfig.DELPHI_PASSWORD, 
         appConfig.COOKIES_FILE
       );
     });

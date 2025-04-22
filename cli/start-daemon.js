@@ -24,8 +24,8 @@ async function startDaemon() {
     // Start the daemon
     console.log('Starting Delphi checker daemon...');
     
-    // Use node to run the check-delphi.js script
-    const child = spawn('node', ['src/scripts/check-delphi.js'], {
+    // Use node to run the check-delphi script
+    const child = spawn('node', ['scripts/check-delphi.js'], {
       detached: true,
       stdio: 'ignore',
       env: process.env
@@ -38,8 +38,8 @@ async function startDaemon() {
     await fs.writeFile(PID_FILE, child.pid.toString());
     
     console.log(`Delphi checker daemon started with PID ${child.pid}`);
-    console.log('The daemon will check for new reports every 24 hours by default.');
-    console.log('You can stop it using: node src/cli/stop-daemon.js');
+    console.log(`The daemon will check for new reports every ${config.CHECK_INTERVAL / (60 * 60 * 1000)} hours`);
+    console.log('You can stop it using: node cli/stop-daemon.js');
     
     return true;
   } catch (error) {

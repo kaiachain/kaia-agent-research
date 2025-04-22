@@ -20,17 +20,8 @@ async function sortVisitedLinks() {
     
     console.log(`Found ${visitedLinks.length} entries in visited_links.json`);
     
-    // Create a backup
-    const timestamp = new Date().toISOString().replace(/:/g, '-');
-    const backupPath = path.join(process.cwd(), 'backups', `visited_links.${timestamp}.json`);
-    
-    // Ensure backups directory exists
-    await fs.mkdir(path.join(process.cwd(), 'backups'), { recursive: true });
-    
-    // Save backup
-    await fs.writeFile(backupPath, visitedLinksData);
-    console.log(`Backup created at ${backupPath}`);
-    
+    // Read the visited links file
+
     // Sort by publicationDate in descending order (newest first)
     visitedLinks.sort((a, b) => {
       // Extract dates for comparison

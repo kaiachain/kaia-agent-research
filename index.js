@@ -1,29 +1,29 @@
 // Export main modules for importing
 
 // Services
-const ai = require('./src/services/ai');
-const auth = require('./src/services/auth');
-const reports = require('./src/services/reports');
-const slack = require('./src/services/slack');
+const ai = require('./services/ai');
+const auth = require('./services/auth');
+const reports = require('./services/reports');
+const slack = require('./services/slack');
 
 // Scripts
-const checker = require('./src/scripts/check-delphi');
-const summarizer = require('./src/scripts/summarize');
+const checker = require('./scripts/check-delphi');
+const summarizer = require('./scripts/summarize');
 
 // Utils
-const cache = require('./src/utils/cache');
-const contentExtractor = require('./src/utils/content-extractor');
+const cache = require('./utils/cache');
+const contentExtractor = require('./utils/content-extractor');
 
 // Configuration
-const config = require('./src/config/config');
+const config = require('./config/config');
 
 // Browser utilities
-const browser = require('./src/browser/browser');
+const browser = require('./browser/browser');
 
 // CLI tools
-const startDaemon = require('./src/cli/start-daemon');
-const stopDaemon = require('./src/cli/stop-daemon');
-const statusDaemon = require('./src/cli/status-daemon');
+const startDaemon = require('./cli/start-daemon');
+const stopDaemon = require('./cli/stop-daemon');
+const statusDaemon = require('./cli/status-daemon');
 
 module.exports = {
   // Main functionality

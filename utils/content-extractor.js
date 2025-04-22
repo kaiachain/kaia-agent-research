@@ -31,11 +31,6 @@ async function extractContent(page, url, maxRetries = 3) {
       // Wait for dynamic content to load with a slightly longer timeout
       await new Promise(resolve => setTimeout(resolve, 8000));
 
-      // Take a screenshot for debugging
-      const screenshotPath = `src/data/screenshots/${new URL(url).pathname.split('/').pop()}.png`;
-      await page.screenshot({ path: screenshotPath, fullPage: true });
-      console.log(`Screenshot saved to ${screenshotPath}`);
-
       // Extract publication date
       const publicationDate = await page.evaluate(() => {
         // Try to get date from JSON-LD structured data

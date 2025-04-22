@@ -33,6 +33,7 @@ async function fixVisitedLinks() {
     console.log(`Found ${visitedLinks.length} entries in visited_links.json`);
     
     // Create a backup
+    /*
     const timestamp = new Date().toISOString().replace(/:/g, '-');
     const backupPath = path.join(process.cwd(), 'backups', `visited_links.${timestamp}.json`);
     
@@ -42,6 +43,7 @@ async function fixVisitedLinks() {
     // Save backup
     await fs.writeFile(backupPath, visitedLinksData);
     console.log(`Backup created at ${backupPath}`);
+    */
     
     // Fix each entry
     let fixedCount = 0;

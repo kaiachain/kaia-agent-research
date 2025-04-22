@@ -60,19 +60,19 @@ function formatDate(date) {
 async function processAllLinks() {
     try {
         logWithTimestamp('Starting to process reports...');
-        
+
         // Send notification that processing has started (status message)
         await logMessage('🔄 Starting to process Delphi Digital reports...', [], false);
-        
+
         // Load cache
         const cache = await loadCache(appConfig.CACHE_FILE);
-        
+
         // In production, this function would call the full processing flow
         // It will be called by the delphi-full-flow.js script
-        
+
         logWithTimestamp('Finished processing reports');
         await logMessage('✅ Finished processing Delphi Digital reports', [], true);
-        
+
         return true;
     } catch (error) {
         logWithTimestamp(`Error processing links: ${error.message}`, 'error');
@@ -84,13 +84,13 @@ async function processAllLinks() {
 async function sendDailyDigest() {
     try {
         logWithTimestamp('Preparing daily digest of Delphi Digital reports...');
-        
+
         // Send notification that digest preparation has started (status message)
         await logMessage('📋 Preparing Delphi Digital daily digest...', [], false);
-        
+
         // In production, this function would prepare and send a real digest
         // It will be called by the slack-digest.js script
-        
+
         logWithTimestamp('Daily digest sent successfully');
         return true;
     } catch (error) {

@@ -1,177 +1,55 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { logWithTimestamp, logError } = require('./slack');
+const config = require('../config/config').loadConfigFromEnv();
 
 // Determine screenshot directory with platform-independence
-const SCREENSHOTS_DIR = path.join(process.cwd(), 'src/data/screenshots');
+// const SCREENSHOTS_DIR = path.join(process.cwd(), 'src/data/screenshots');
 
 // Ensure screenshots directory exists
-async function ensureScreenshotsDir() {
-  try {
-    await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
-    return true;
-  } catch (error) {
-    logError(`Error creating screenshots directory: ${error.message}`, error);
-    return false;
-  }
-}
+// async function ensureScreenshotsDir() {
+//   try {
+//     await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
+//   } catch (error) {
+//     if (error.code !== 'EEXIST') {
+//       logError(`Error creating screenshots directory: ${error.message}`, error);
+//     }
+//   }
+// }
 
-// Function to check for new reports
+// Function to check for new reports from Delphi Digital
 async function checkForNewReports(page, url) {
+  logWithTimestamp('Checking for new reports...');
+  
+  // Create screenshots directory if it doesn't exist
+  // await ensureScreenshotsDir();
+  
   try {
-    // Create screenshots directory if it doesn't exist
-    await ensureScreenshotsDir();
-    
-    logWithTimestamp('Checking for new reports...');
-    console.log(`Navigating to URL: ${url}`);
-    
-    // Add retry logic for navigation
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    while (retryCount < maxRetries) {
-      try {
-        // Navigate to the page and wait for content to load
-        await page.goto(url, { 
-          waitUntil: 'networkidle0',
-          timeout: 60000
-        });
-        console.log('Page loaded successfully');
-        
-        // Verify we're on the correct page
-        const currentUrl = page.url();
-        console.log('Current URL:', currentUrl);
-        
-        if (currentUrl.includes('/login')) {
-          console.log('Redirected to login page - session may have expired');
-          throw new Error('Authentication required');
-        }
-        
-        // Wait for the content to be fully loaded
-        await page.waitForSelector('a[href*="/reports/"]', {
-          timeout: 30000,
-          visible: true
-        });
-        console.log('Found report links on page');
-        
-        // Verify we can actually see the content
-        const pageText = await page.evaluate(() => document.body.innerText);
-        if (pageText.toLowerCase().includes('sign in') || pageText.toLowerCase().includes('log in')) {
-          console.log('Found login text on page - session may be invalid');
-          throw new Error('Invalid session');
-        }
-        
-        break; // If we get here, everything is good
-      } catch (error) {
-        retryCount++;
-        console.log(`Attempt ${retryCount} failed:`, error.message);
-        
-        if (retryCount === maxRetries) {
-          throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        console.log('Retrying...');
-      }
-    }
-    
-    // Get page metrics
-    const metrics = await page.metrics();
-    console.log('Page metrics:', JSON.stringify(metrics, null, 2));
+    logWithTimestamp(`Attempting to login with URL: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle0' });
     
     // Take a screenshot of the current state
-    const screenshotPath = path.join(SCREENSHOTS_DIR, 'current-page-state.png');
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    // const screenshotPath = path.join(SCREENSHOTS_DIR, 'current-page-state.png');
+    // await page.screenshot({ path: screenshotPath, fullPage: true });
     
-    // Extract links from the current page
-    const links = await page.evaluate(() => {
-      const reportLinks = document.querySelectorAll('a[href*="/reports/"]');
-      console.log(`Found ${reportLinks.length} report links`);
-      
-      const uniqueLinks = new Map();
-      const debugInfo = {
-        totalElementsFound: reportLinks.length,
-        elementDetails: []
-      };
-      
-      reportLinks.forEach(el => {
-        const url = el.href;
-        const rect = el.getBoundingClientRect();
-        const isVisible = rect.width > 0 && rect.height > 0;
-        
-        debugInfo.elementDetails.push({
-          url: url,
-          visible: isVisible,
-          position: {
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height
-          },
-          text: el.textContent.trim()
-        });
-        
-        if (url && !uniqueLinks.has(url)) {
-          uniqueLinks.set(url, {
-            url: url,
-            title: el.textContent.trim() || el.getAttribute('title') || el.getAttribute('aria-label') || ''
-          });
-        }
-      });
-      
-      return {
-        links: Array.from(uniqueLinks.values()),
-        debug: debugInfo
-      };
-    });
+    // Save HTML content
+    // const contentPath = path.join(SCREENSHOTS_DIR, 'current-page.html');
+    // await fs.writeFile(contentPath, await page.content());
     
-    // Log debug information
-    console.log('\nDebug Information:');
-    console.log(`Total elements found: ${links.debug.totalElementsFound}`);
-    console.log('Element details:', JSON.stringify(links.debug.elementDetails, null, 2));
+    // Get the list of links
+    // ... existing code ...
+    logError('Error checking for new reports', error);
     
-    // Save the current page content for verification
-    const contentPath = path.join(SCREENSHOTS_DIR, 'current-page.html');
-    await fs.writeFile(contentPath, await page.content());
+    // Save the current page state on error
+    // const errorContentPath = path.join(SCREENSHOTS_DIR, 'error-state.html');
+    // const errorScreenshotPath = path.join(SCREENSHOTS_DIR, 'error-state.png');
+    // await fs.writeFile(errorContentPath, await page.content());
+    // await page.screenshot({ path: errorScreenshotPath, fullPage: true });
+    // logWithTimestamp('Error state saved to error-state.html and error-state.png in screenshots directory');
     
-    // Prepare links
-    const now = new Date().toISOString();
-    const preparedLinks = links.links.map(link => ({
-      url: link.url,
-      title: link.title || "Untitled Report",
-      body: "",
-      timestamp: now,
-      scrapedAt: now,
-      lastChecked: now,
-      summary: "",
-      publicationDate: now
-    }));
-    
-    if (preparedLinks.length === 0) {
-      console.warn('No links found - this might indicate a problem');
-      throw new Error('No links found on page');
-    }
-    
-    console.log(`\nFound ${preparedLinks.length} unique reports:`);
-    preparedLinks.forEach((link, index) => {
-      console.log(`${index + 1}. ${link.title}: ${link.url}`);
-    });
-    
-    return preparedLinks;
+    return []; // Return an empty array to indicate failure
   } catch (error) {
-    logError('Error in checkForNewReports', error);
-    // Save error state
-    try {
-      const errorContentPath = path.join(SCREENSHOTS_DIR, 'error-state.html');
-      const errorScreenshotPath = path.join(SCREENSHOTS_DIR, 'error-state.png');
-      await fs.writeFile(errorContentPath, await page.content());
-      await page.screenshot({ path: errorScreenshotPath, fullPage: true });
-      logWithTimestamp('Error state saved to error-state.html and error-state.png in screenshots directory');
-    } catch (debugError) {
-      logError('Failed to save error state', debugError);
-    }
-    throw error;
+    // logError(`Failed to create backup directory`, error);
   }
 }
 
@@ -267,7 +145,7 @@ async function findNewReports(links, visitedLinksPath) {
 async function updateVisitedLinks(newLinks, visitedLinks, visitedLinksPath) {
   try {
     // First, create a backup of the current file
-    const backupDir = path.join(process.cwd(), 'src/data/backups');
+    const backupDir = config.BACKUPS_DIR;
     
     try {
       await fs.mkdir(backupDir, { recursive: true });

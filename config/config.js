@@ -11,10 +11,13 @@ const config = {
   CHECK_INTERVAL: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
   
   // File paths
-  COOKIES_FILE: path.join(process.cwd(), 'src/data/delphi_cookies.json'),
-  CACHE_FILE: path.join(process.cwd(), 'src/data/processed_reports_cache.json'),
-  VISITED_LINKS_FILE: path.join(process.cwd(), 'src/data/visited_links.json'),
-  BACKUPS_DIR: path.join(process.cwd(), 'src/data/backups'),
+  COOKIES_FILE: path.join(process.cwd(), 'data/delphi_cookies.json'),
+  CACHE_FILE: path.join(process.cwd(), 'data/processed_reports_cache.json'),
+  CACHE_EXPIRY_DAYS: 7, // Default expiry days for cache entries
+  VISITED_LINKS_FILE: path.join(process.cwd(), 'data/visited_links.json'),
+  BACKUPS_DIR: path.join(process.cwd(), 'data/backups'),
+  HISTORY_FILE: path.join(process.cwd(), 'data/slack_message_history.json'),
+  RATE_LIMIT_DELAY_MS: 1000, // Delay between requests to avoid rate limiting
   
   // Browser settings
   BROWSER_CONFIG: {
@@ -53,10 +56,8 @@ function loadConfigFromEnv() {
     if (!isNaN(interval)) config.CHECK_INTERVAL = interval;
   }
   
-  if (process.env.COOKIES_FILE) config.COOKIES_FILE = process.env.COOKIES_FILE;
-  if (process.env.CACHE_FILE) config.CACHE_FILE = process.env.CACHE_FILE;
-  if (process.env.VISITED_LINKS_FILE) config.VISITED_LINKS_FILE = process.env.VISITED_LINKS_FILE;
-  if (process.env.BACKUPS_DIR) config.BACKUPS_DIR = process.env.BACKUPS_DIR;
+  if (process.env.CACHE_EXPIRY_DAYS) config.CACHE_EXPIRY_DAYS = parseInt(process.env.CACHE_EXPIRY_DAYS, 10);
+  if (process.env.RATE_LIMIT_DELAY_MS) config.RATE_LIMIT_DELAY_MS = parseInt(process.env.RATE_LIMIT_DELAY_MS, 10);
   
   // Add Slack channel id
   if (process.env.SLACK_CHANNEL_ID) config.SLACK_CONFIG.channelId = process.env.SLACK_CHANNEL_ID;
