@@ -12,10 +12,12 @@ const config = {
   
   // File paths
   COOKIES_FILE: path.join(process.cwd(), 'data/delphi_cookies.json'),
+  // Stores processed report data to avoid re-processing the same reports multiple times
+  // and improve performance by caching results for CACHE_EXPIRY_DAYS
   CACHE_FILE: path.join(process.cwd(), 'data/processed_reports_cache.json'),
   CACHE_EXPIRY_DAYS: 7, // Default expiry days for cache entries
   VISITED_LINKS_FILE: path.join(process.cwd(), 'data/visited_links.json'),
-  BACKUPS_DIR: path.join(process.cwd(), 'data/backups'),
+  UNSENT_REPORTS_FILE: path.join(process.cwd(), 'data/unsent_reports.json'),
   HISTORY_FILE: path.join(process.cwd(), 'data/slack_message_history.json'),
   RATE_LIMIT_DELAY_MS: 1000, // Delay between requests to avoid rate limiting
   
@@ -41,7 +43,13 @@ const config = {
     topK: 40,
     topP: 0.95,
     maxOutputTokens: 1024
-  }
+  },
+  
+  // Add Gemini API Key from environment
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  
+  // Add Slack Token from environment
+  SLACK_TOKEN: process.env.SLACK_TOKEN
 };
 
 // Function to override config with environment variables

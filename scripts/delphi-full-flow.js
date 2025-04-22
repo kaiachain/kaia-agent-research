@@ -7,12 +7,11 @@ const { spawn } = require('child_process');
 // Import services and utilities
 const { launchBrowser, setupPage } = require('../browser/browser');
 const { login } = require('../services/auth');
-const { checkForNewReports, findNewReports, updateVisitedLinks } = require('../services/reports');
-const { initializeSlack, sendSlackMessage, formatReportForSlack, getMessagesForReport, getMessageHistory, logMessage, logWithTimestamp, logError } = require('../services/slack');
+const { checkForNewReports } = require('../services/reports');
+const { initializeSlack, sendSlackMessage, formatReportForSlack, logMessage, logWithTimestamp, logError } = require('../services/slack');
 const { initializeGemini, getSummaryFromGemini } = require('../services/ai');
-const { extractContent } = require('../utils/content-extractor');
-const { loadCache, updateCache, createContentHash, needsProcessing } = require('../utils/cache');
 const { config, loadConfigFromEnv } = require('../config/config');
+const { readLastVisitedLink, writeLastVisitedLink } = require('../utils/link-tracker');
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
@@ -28,82 +27,66 @@ const PID_FILE = path.join(process.cwd(), 'delphi-checker.pid');
 const args = process.argv.slice(2);
 const daemon = args.includes('--daemon');
 
-// Main function to process a single report
-async function processReport(page, report, cache) {
+/**
+ * Fetches the main textual content of a given report URL.
+ * @param {object} page - Puppeteer page object.
+ * @param {string} url - The URL of the report page.
+ * @returns {Promise<string>} The extracted text content.
+ */
+async function fetchReportContent(page, url) {
   try {
-    logWithTimestamp(`Processing report: ${report.title}`);
-    
-    // Check if we've sent messages about this report before
-    const previousMessages = await getMessagesForReport(report.url);
-    const isUpdate = previousMessages.length > 0;
-    
-    // Known problematic URLs that need special handling
-    const problematicUrls = [
-      'policy-formulation-survival-guide-for-security-status'
-    ];
-    
-    // Check if this URL contains any problematic patterns
-    const needsSpecialHandling = problematicUrls.some(pattern => 
-      report.url.includes(pattern)
-    );
-    
-    // Extract content from the report page with retry mechanism
-    let maxRetries = needsSpecialHandling ? 5 : 3; // More retries for problematic URLs
-    const articleContent = await extractContent(page, report.url, maxRetries);
-    
-    // Generate a summary using AI
-    let summary = await getSummaryFromGemini(articleContent.title, articleContent.content);
-    
-    if (!summary) {
-      summary = "No summary available.";
-    }
-    
-    // Current timestamp for all timestamp-related fields
-    const now = new Date().toISOString();
-    
-    // Update the report object using the exact format from visited_links.json.template
-    const processedReport = {
-      url: report.url,
-      title: articleContent.title || report.title || "Untitled Report",
-      body: "",
-      timestamp: now,
-      scrapedAt: now,
-      lastChecked: now,
-      summary: summary,
-      publicationDate: articleContent.publicationDate || now
-    };
-    
-    // Update cache
-    const contentHash = createContentHash(articleContent.content);
-    await updateCache(report.url, processedReport, contentHash, cache, appConfig.CACHE_FILE);
-    
-    // Skip sending to Slack if this report has already been sent before
-    // We'll let the caller decide whether to send or not based on isUpdate
-    
-    return {
-      report: processedReport,
-      isUpdate: isUpdate,
-      previousMessages: previousMessages
-    };
+    logWithTimestamp(`Fetching content for: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+    // *** Attempt to get body text from common article containers ***
+    const content = await page.evaluate(() => {
+      const articleSelectors = [
+        'article.report-content', // Specific class?
+        '.prose',               // Common class for formatted text
+        '.report-body',         // Another possible class
+        'article',              // General article tag
+        '#main-content'         // ID for main content area
+      ];
+      let mainContentElement = null;
+      for (const selector of articleSelectors) {
+        mainContentElement = document.querySelector(selector);
+        if (mainContentElement) break;
+      }
+      // Return innerText which represents visible text content
+      return mainContentElement ? mainContentElement.innerText : document.body.innerText;
+    });
+    logWithTimestamp(`Fetched body text successfully.`);
+    return content;
   } catch (error) {
-    logError(`Error processing report ${report.url}`, error);
-    
-    // If there's an error, return a minimal valid report following the template
-    const now = new Date().toISOString();
-    return {
-      report: {
-        url: report.url,
-        title: report.title || "Error: Could not process report",
-        body: "",
-        timestamp: now,
-        scrapedAt: now, 
-        lastChecked: now,
-        summary: "Error processing this report. Please check manually.",
-        publicationDate: now
-      },
-      isUpdate: false,
-      previousMessages: []
-    };
+    logError(`Error fetching content for ${url}:`, error);
+    return "Error fetching content."; // Return error message instead of throwing
+  }
+}
+
+/**
+ * Writes the newly processed reports from the current run to visited_links.json,
+ * overwriting any previous content. Sorts reports before writing.
+ * @param {Array<object>} newlyProcessedReports - Array of report objects processed in this run.
+ * @param {string} filePath - Path to the visited_links.json file.
+ */
+async function updateVisitedLinksFile(newlyProcessedReports, filePath) {
+  // Sort the newly processed reports by publicationDate (descending)
+  // Use scrapedAt as a fallback if publicationDate is missing/invalid
+  newlyProcessedReports.sort((a, b) => {
+    const dateA = new Date(a.publicationDate || a.scrapedAt || 0);
+    const dateB = new Date(b.publicationDate || b.scrapedAt || 0);
+    return dateB - dateA;
+  });
+
+  // Write only the newly processed reports to the file, overwriting existing content
+  try {
+    await fs.writeFile(filePath, JSON.stringify(newlyProcessedReports, null, 2), 'utf8');
+    if (newlyProcessedReports.length > 0) {
+       logWithTimestamp(`Successfully wrote ${newlyProcessedReports.length} newly processed reports to ${filePath}.`);
+    } else {
+       logWithTimestamp(`Wrote empty array to ${filePath} as no reports were processed in this run.`);
+    }
+  } catch (error) {
+    logError(`Error writing newly processed reports to ${filePath}:`, error);
   }
 }
 
@@ -125,11 +108,12 @@ async function runFullFlow() {
   logWithTimestamp(`=== Starting Delphi full flow: ${new Date().toISOString()} ===`);
   
   if (slackInitialized) {
-    await logMessage('🔍 Starting Delphi Digital full processing flow...', [], false);
+    await logMessage('🔍 Starting Delphi Digital processing flow (using last visited link)...', [], false);
   }
   
   const browser = await launchBrowser();
-  
+  let latestProcessedUrl = null; // Track the URL of the newest report processed in this run
+
   try {
     const page = await setupPage(browser);
     
@@ -149,214 +133,155 @@ async function runFullFlow() {
       if (slackInitialized) {
         await logMessage('❌ Failed to log in to Delphi Digital after multiple attempts. Check credentials.', [], true, 'error');
       }
-      return false;
+      return false; // Indicate failure
     }
     
-    // Step 2: Check for new reports with retry
-    const links = await retryOperation(async () => {
-      const result = await checkForNewReports(page, appConfig.DELPHI_URL);
-      if (result.length === 0) throw new Error('No links found');
-      return result;
+    // Step 2: Read the last visited link
+    const lastVisitedUrl = await readLastVisitedLink();
+    logWithTimestamp(`Last visited URL from file: ${lastVisitedUrl || 'None (first run?)'}`);
+
+    // Step 3: Check for new reports since the last visited one
+    const newReports = await retryOperation(async () => {
+      // Pass lastVisitedUrl to checkForNewReports
+      return await checkForNewReports(page, appConfig.DELPHI_REPORTS_URL, lastVisitedUrl);
     });
     
-    if (links.length === 0) {
-      logWithTimestamp('Failed to get links from Delphi after retries. Aborting process.', 'error');
-      if (slackInitialized) {
-        await logMessage('❌ Failed to retrieve links from Delphi Digital after multiple attempts.', [], true, 'error');
-      }
-      return false;
-    }
-    
-    // Step 3: Find new reports
-    const { newLinks, visitedLinks } = await findNewReports(links, appConfig.VISITED_LINKS_FILE);
-    
-    // Load cache
-    const cache = await loadCache(appConfig.CACHE_FILE);
-    
-    // Load message history to check which reports have been sent
-    logWithTimestamp('Loading Slack message history to check for previously sent reports...');
-    const messageHistory = await getMessageHistory(1000);
-    const sentReportUrls = new Set(
-      messageHistory
-        .filter(msg => msg.text && (
-          msg.text.includes('New report summary:') || 
-          msg.text.includes('Update for report:') || 
-          msg.text.includes('Report summary:')
-        ))
-        .flatMap(msg => {
-          // Extract URLs from blocks if present
-          if (msg.blocks && Array.isArray(msg.blocks)) {
-            return msg.blocks
-              .filter(block => block.type === 'section' && block.fields)
-              .flatMap(block => block.fields || [])
-              .filter(field => field && field.text && field.text.includes('<http'))
-              .map(field => {
-                const match = field.text.match(/<(https?:\/\/[^|>]+)/);
-                return match ? match[1] : null;
-              })
-              .filter(url => url !== null);
-          }
-          return [];
-        })
-    );
-    
-    logWithTimestamp(`Found ${sentReportUrls.size} reports that have already been sent to Slack`);
-    
     // Step 4: Process each new report
-    if (newLinks.length > 0) {
-      // Get all reports that need to be processed
-      const reportsToProcess = newLinks.filter(report => !sentReportUrls.has(report.url));
+    if (newReports && newReports.length > 0) {
+      logWithTimestamp(`Processing ${newReports.length} new reports...`);
+      const processedReportsThisRun = []; // Store successfully processed reports
       
-      if (reportsToProcess.length === 0 && newLinks.length > 0) {
-        logWithTimestamp('All new reports have already been sent to Slack');
-        await logMessage(`ℹ️ Found ${newLinks.length} new reports, but all have already been sent to Slack before.`, [], false);
-      } else if (reportsToProcess.length < newLinks.length) {
-        logWithTimestamp(`Found ${newLinks.length} new reports, but only ${reportsToProcess.length} need to be sent to Slack`);
-        const skippedReports = newLinks.filter(report => sentReportUrls.has(report.url));
-        const skippedList = skippedReports.map(report => `• ${report.title}: ${report.url}`).join('\n');
-        await logMessage(`📊 Found ${newLinks.length} new reports, processing ${reportsToProcess.length} (skipping ${skippedReports.length} that were already sent).\n\nSkipped reports:\n${skippedList}`, [], false);
-      } else if (reportsToProcess.length > 0) {
-        logWithTimestamp(`Found ${reportsToProcess.length} new reports`);
-        await logMessage(`🔍 Found ${reportsToProcess.length} new reports to process.`, [], false);
-      }
-      
-      // Initialize arrays to track processed reports and those to be sent
-      const processedReports = [];
-      const reportsToSend = [];
-      
-      // Process each report that needs processing
-      for (const link of reportsToProcess) {
+      // Process reports (newest first assumed)
+      latestProcessedUrl = newReports[0].url; // Store the newest URL to update last_visited_link
+
+      for (const report of newReports) {
+        logWithTimestamp(`--- Processing Report: ${report.title} ---`);
         try {
-          const result = await processReport(page, link, cache);
-          processedReports.push(result.report);
-          
-          // Check if this report should be sent to Slack (not in sentReportUrls)
-          if (!sentReportUrls.has(link.url)) {
-            reportsToSend.push(result);
-          } else {
-            logWithTimestamp(`Skipping sending report "${link.title}" to Slack as it has already been sent before.`);
-          }
-        } catch (error) {
-          logError(`Error processing report ${link.url}`, error);
-          // Continue with other reports even if one fails
-        }
-      }
-      
-      // Only update visited links if we actually processed any reports
-      if (processedReports.length > 0) {
-        // Step 5: Update visited links with processed reports
-        await updateVisitedLinks(processedReports, visitedLinks, appConfig.VISITED_LINKS_FILE);
-      }
-      
-      // Step 6: Send new reports to Slack (only those that haven't been sent before)
-      if (reportsToSend.length > 0) {
-        logWithTimestamp(`Sending ${reportsToSend.length} new reports to Slack...`);
-        
-        for (const resultItem of reportsToSend) {
-          const { report, isUpdate, previousMessages } = resultItem;
-          
-          // Format the report for Slack
-          const blocks = formatReportForSlack(report);
-          
-          // Add update information if this is an update to a previously sent report
-          let messagePrefix = `New report summary: ${report.title}`;
-          if (isUpdate) {
-            messagePrefix = `Update for report: ${report.title} (previously sent ${previousMessages.length} time${previousMessages.length > 1 ? 's' : ''})`;
+          // Fetch body content
+          const reportContent = await fetchReportContent(page, report.url);
+          let summary = "Error: Could not summarize."; // Default summary
+          let processedReportData = { ...report }; // Copy initial data
+
+          if (reportContent !== "Error fetching content.") {
+            // Print the fetched body content to the terminal
+            console.log("\n--- Fetched Report Body ---");
+            console.log(reportContent.substring(0, 1000) + (reportContent.length > 1000 ? '... [truncated]' : '')); // Print truncated body
+            console.log("--- End Report Body ---\n");
             
-            // Add a note about the update to the blocks
-            blocks.push({
-              type: "context",
-              elements: [
-                {
-                  type: "mrkdwn",
-                  text: `_This is an update to a previously processed report. Updated on ${new Date().toLocaleString()}_`
-                }
-              ]
-            });
+            // Summarize using Gemini (using the fetched body content)
+            if (geminiInitialized) {
+              summary = await getSummaryFromGemini(report.title, reportContent);
+              if (!summary) { // Handle Gemini error
+                summary = "Error: Failed to get summary from Gemini.";
+                logWithTimestamp(`Failed to get summary from Gemini for: ${report.title}`);
+              } else {
+                logWithTimestamp(`Summary received from Gemini for: ${report.title}`);
+              }
+            } else {
+              summary = "Error: Gemini not initialized.";
+              logWithTimestamp('Skipping Gemini summary: Not initialized.', 'warn');
+            }
+            
+            // Construct the report object using the template structure
+            const now = new Date().toISOString();
+            processedReportData = {
+              url: report.url,
+              title: report.title || "Untitled Report",
+              body: "",
+              timestamp: report.timestamp || now,
+              scrapedAt: now,
+              lastChecked: now,
+              // Use the summary directly from Gemini (which includes relevance) or the error string
+              summary: summary, 
+              publicationDate: report.publicationDate || now
+            };
+            
+            // Send to Slack if summary was successful
+            if (slackInitialized && !summary.startsWith('Error:')) {
+              try {
+                logWithTimestamp(`Sending summary for "${processedReportData.title}" to Slack...`);
+                const blocks = formatReportForSlack(processedReportData);
+                await sendSlackMessage(`New Report Summary: ${processedReportData.title}`, blocks);
+                logWithTimestamp(`Sent summary for "${processedReportData.title}" to Slack successfully.`);
+              } catch (slackError) {
+                logError(`Failed to send report "${processedReportData.title}" to Slack:`, slackError);
+              }
+            }
+            
+          } else {
+            logWithTimestamp(`Skipping summarization due to content fetch error for ${report.title}`);
+            // Update report data with simple error state
+            const now = new Date().toISOString();
+            processedReportData = {
+               url: report.url,
+               title: report.title || "Untitled Report",
+               body: "",
+               timestamp: report.timestamp || now,
+               scrapedAt: now,
+               lastChecked: now,
+               summary: "Error: Could not fetch content.", // Simple error message
+               publicationDate: report.publicationDate || now
+            };
           }
           
-          // Send the report to Slack (this should be sent to Slack as it's a report summary)
-          if (slackInitialized) {
-            await sendSlackMessage(messagePrefix, blocks);
-            logWithTimestamp(`Sent report "${report.title}" to Slack.`);
-          }
-        }
-        
-        // Send notification that processing is complete (this should be sent to Slack as it's a summary)
-        if (slackInitialized) {
-          logWithTimestamp(`✅ Successfully processed and sent ${reportsToSend.length} new reports!`);
-        }
-      } else if (processedReports.length > 0) {
-        logWithTimestamp(`Processed ${processedReports.length} reports, but all were already sent to Slack`);
-        await logMessage(`✅ Successfully processed ${processedReports.length} new reports, but all were already sent to Slack previously.`, [], false);
-      }
-    } else {
-      logWithTimestamp('No new reports found');
-      await logMessage('😴 No new reports found from Delphi Digital.', [], false);
-    }
-    
-    // Step 7: Find reports in visited_links.json that have summaries but haven't been sent to Slack
-    logWithTimestamp('Checking for previously processed reports that need to be sent to Slack...');
-    
-    // Get all reports that have summaries
-    const processedReportsWithSummaries = visitedLinks.filter(link => link.summary && link.summary.length > 0);
-    
-    // Filter to only those that have not been sent to Slack before
-    const processedReportsToSend = processedReportsWithSummaries.filter(report => !sentReportUrls.has(report.url));
-    
-    // Send these reports to Slack
-    if (processedReportsToSend.length > 0) {
-      // Limit to 10 reports per run to avoid flooding Slack
-      const reportsToSendNow = processedReportsToSend.slice(0, 10);
-      const extraCount = processedReportsToSend.length > 10 ? 
-        `\n\n_Note: There are ${processedReportsToSend.length - 10} more reports that will be sent in subsequent runs._` : '';
-      
-      const reportList = reportsToSendNow.map(report => `• ${report.title || 'Untitled'}: ${report.url}`).join('\n');
-      
-      // Log to console only, don't send to Slack (changed from true to false)
-      await logMessage(`📋 Sending ${processedReportsToSend.length} previously processed reports to Slack.\n${reportList}${extraCount}`, [], false);
-      
-      // Send each report
-      let sentCount = 0;
-      for (const report of reportsToSendNow) {
-        logWithTimestamp(`Sending previously processed report to Slack: ${report.title}`);
-        
-        // Format the report for Slack
-        const blocks = formatReportForSlack(report);
-        
-        // Send the report to Slack (this should be sent to Slack as it's a report summary)
-        try {
-          await sendSlackMessage(`Report summary: ${report.title}`, blocks);
-          sentCount++;
-          
-          // Add a small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Add the processed (or error state) report data to our list for this run
+          processedReportsThisRun.push(processedReportData);
+
         } catch (error) {
-          logError(`Error sending report to Slack`, error);
+          logError(`Unhandled error processing report ${report.url}`, error);
+          // Optionally add an error entry to processedReportsThisRun here too
         }
+        logWithTimestamp(`--- Finished Report: ${report.title} ---`);
       }
       
-      // Send notification that processing is complete - log to console only (don't send to Slack)
-      if (sentCount > 0) {
-        // Log locally but don't send to Slack
-        logWithTimestamp(`✅ Successfully sent ${sentCount} previously processed reports to Slack!`);
+      // Step 5: Update the main visited_links.json file
+      if (processedReportsThisRun.length > 0) {
+        await updateVisitedLinksFile(processedReportsThisRun, appConfig.VISITED_LINKS_FILE);
       } else {
-        // Log locally but don't send to Slack
-        logWithTimestamp(`⚠️ Attempted to send ${processedReportsToSend.length} previously processed reports to Slack, but none were sent successfully.`);
+        logWithTimestamp('No reports were successfully processed in this run.');
       }
-    } else if (visitedLinks.some(link => link.summary && link.summary.length > 0)) {
-      logWithTimestamp('All previously processed reports have already been sent to Slack');
-      // Log to console only (changed from true to false)
-      await logMessage(`ℹ️ No previously processed reports to send - all have already been sent to Slack.`, [], false);
+
+      // Step 6: Update the last visited link file with the newest URL processed
+      if (latestProcessedUrl) { // Ensure we have a URL
+        await writeLastVisitedLink(latestProcessedUrl);
+      } else {
+        logWithTimestamp('No new report URL found to update last visited link.', 'warn');
+      }
+      
+      // TODO: Send Slack messages for processedReportsThisRun if needed
+      // Example loop:
+      // for (const processedReport of processedReportsThisRun) {
+      //    if (!processedReport.summary.startsWith('Error:')) { 
+      //       await sendSlackMessage(...)
+      //    }
+      // }
+
+      logWithTimestamp(`✅ Processing complete for this run. Processed ${processedReportsThisRun.length} reports.`);
+      if (slackInitialized) {
+        await logMessage(`✅ Successfully processed ${processedReportsThisRun.length} reports. Newest: ${latestProcessedUrl || 'N/A'}`, [], false);
+      }
+
+    } else {
+      logWithTimestamp('No new reports found since last visit.');
+      if (slackInitialized) {
+        await logMessage('😴 No new reports found from Delphi Digital since last visit.', [], false);
+      }
     }
     
-    return true;
+    return true; // Indicate success
+
   } catch (error) {
-    logError('Error in full flow process', error);
-    // Don't send errors to Slack
-    return false;
+    logError('An unexpected error occurred in the main flow', error);
+    if (slackInitialized) {
+      await logMessage('❌ An unexpected error occurred during the Delphi processing flow. Check logs.', [], true, 'error');
+    }
+    return false; // Indicate failure
   } finally {
-    await browser.close();
+    if (browser) {
+      await browser.close();
+      logWithTimestamp('Browser closed.');
+    }
+    logWithTimestamp(`=== Delphi full flow finished: ${new Date().toISOString()} ===`);
   }
 }
 
