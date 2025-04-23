@@ -48,7 +48,7 @@ RUN npm ci --omit=dev
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p /app/src/data/screenshots && \
+RUN mkdir -p /app/data && \
     chown -R node:node /app
 
 # Set environment variables
@@ -60,7 +60,7 @@ USER node
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node src/scripts/check-delphi.js --health-check || exit 1
+    CMD node scripts/check-delphi.js --health-check || exit 1
 
 # Run the application
 CMD ["npm", "run", "delphi:run"] 

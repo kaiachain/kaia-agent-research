@@ -40,22 +40,22 @@ RUN npm ci --only=production
 COPY . .
 
 # Create necessary directories and set permissions
-RUN mkdir -p /app/src/data && \
-    mkdir -p /app/src/data/screenshots && \
-    chown -R node:node /app/src/data && \
-    chown -R node:node /app/src/data/screenshots
+RUN mkdir -p /app/data && \
+    chown -R node:node /app/data
 
 # Set environment variables
 ENV NODE_ENV=production \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--no-first-run,--no-zygote,--single-process \
+    TZ=UTC
 
 # Switch to non-root user
 USER node
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node src/scripts/check-delphi.js --health-check || exit 1
+    CMD node scripts/check-delphi.js --health-check || exit 1
 
 # Default command (can be overridden by docker-compose)
 CMD ["npm", "run", "delphi:run"] 
