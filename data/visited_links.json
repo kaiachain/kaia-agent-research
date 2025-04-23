@@ -3,50 +3,50 @@
     "url": "https://members.delphidigital.io/reports/the-path-to-defis-etf-moment-the-rise-of-morpho-curators-and-mullets",
     "title": "The Path to DeFi's ETF Moment: The Rise of Morpho, Curators, and Mullets",
     "body": "",
-    "timestamp": "2025-04-22T10:34:34.508Z",
-    "scrapedAt": "2025-04-22T10:34:41.490Z",
-    "lastChecked": "2025-04-22T10:34:41.490Z",
-    "summary": "1. DeFi is evolving with vaults and curators, resembling TradFi's ETFs, to attract more capital. This will converge CeFi and DeFi with \"DeFi mullets\" offering better yields.\n\nRelevance: Kaia can leverage curated DeFi strategies and modular infrastructure to offer enhanced yield products.\n",
-    "publicationDate": "2025-04-22T10:34:34.508Z"
+    "timestamp": "2025-04-23T05:46:38.971Z",
+    "scrapedAt": "2025-04-23T05:46:38.971Z",
+    "lastChecked": "2025-04-23T05:46:38.971Z",
+    "summary": "1. DeFi is evolving with vaults and curators, mirroring ETFs by simplifying access to yield and attracting capital, potentially integrating with CeFi and fintech for broader adoption.\n\nRelevance: Kaia's modular design and focus on user-friendly interfaces align with the report's emphasis on simplifying DeFi access and facilitating CeFi integration.\n",
+    "publicationDate": "2025-04-23T05:46:38.971Z"
   },
   {
     "url": "https://members.delphidigital.io/reports/fuel-os-engineered-playgrounds-for-next-generation-of-apps",
     "title": "Fuel Network: Engineered Playground For The Next Generation Of Apps",
     "body": "",
-    "timestamp": "2025-04-22T10:34:34.508Z",
-    "scrapedAt": "2025-04-22T10:34:49.780Z",
-    "lastChecked": "2025-04-22T10:34:49.780Z",
-    "summary": "Fuel Network aims to revolutionize app development with its FuelVM, offering faster transactions, lower fees, and enhanced performance through a UTXO model and parallel execution. It focuses on creating unique applications, especially in DeFi, DePIN, and gaming.\n\nRelevance: Fuel’s innovations in UTXO models and parallel processing could inform future architectural choices for Kaia, potentially enhancing scalability and efficiency.\n",
-    "publicationDate": "2025-04-22T10:34:34.508Z"
+    "timestamp": "2025-04-23T05:46:38.971Z",
+    "scrapedAt": "2025-04-23T05:46:48.516Z",
+    "lastChecked": "2025-04-23T05:46:48.516Z",
+    "summary": "Fuel Network is building a custom OS (FuelVM) to enhance Ethereum's speed, security, and efficiency, using UTXO and parallel processing for novel applications.\n\nRelevance: Kaia could potentially benefit from the FuelVM architecture for its own high-performance and specialized application development.\n",
+    "publicationDate": "2025-04-23T05:46:38.971Z"
   },
   {
     "url": "https://members.delphidigital.io/reports/policy-formulation-survival-guide-for-security-status",
     "title": "Policy Formulation Survival Guide for Security Status",
     "body": "",
-    "timestamp": "2025-04-22T10:34:34.508Z",
-    "scrapedAt": "2025-04-22T10:34:57.320Z",
-    "lastChecked": "2025-04-22T10:34:57.320Z",
-    "summary": "1. The report advocates for outcome-based crypto regulation, emphasizing safe harbors, activity-based exemptions, flexible taxonomy, and reforms to securities laws, instead of focusing solely on token classification.\n\nRelevance: Kaia's regulatory compliance efforts and token design must consider the evolving regulatory landscape and potential for future innovation, particularly in the context of emerging network effects and governance.\n",
-    "publicationDate": "2025-04-22T10:34:34.508Z"
+    "timestamp": "2025-04-23T05:46:38.971Z",
+    "scrapedAt": "2025-04-23T05:46:55.983Z",
+    "lastChecked": "2025-04-23T05:46:55.983Z",
+    "summary": "1. The report analyzes the regulatory climate for crypto assets, advocating for outcome-based policy, safe harbors, clear guidance, and a flexible token taxonomy, emphasizing investor protection and innovation.\n\nRelevance: Understanding regulatory frameworks is crucial for Kaia's compliance strategy and its integration with the evolving digital asset landscape.\n",
+    "publicationDate": "2025-04-23T05:46:38.971Z"
   },
   {
     "url": "https://members.delphidigital.io/reports/zkverify-memo-integration-flow-potential-markets-and-token-economics",
     "title": "zkVerify Memo: Integration Flow, Potential Markets, and Token Economics",
     "body": "",
-    "timestamp": "2025-04-22T10:34:34.508Z",
-    "scrapedAt": "2025-04-22T10:35:04.499Z",
-    "lastChecked": "2025-04-22T10:35:04.499Z",
-    "summary": "zkVerify, a specialized L1 for ZKP verification, aims to improve developer efficiency and capture the growing market for at-scale verification, focusing on private DeFi, scalability, and proof of humanity.\n\nRelevance: Enables efficient, cost-effective ZKP verification, potentially enhancing Kaia's privacy features and scalability.\n",
-    "publicationDate": "2025-04-22T10:34:34.508Z"
+    "timestamp": "2025-04-23T05:46:38.971Z",
+    "scrapedAt": "2025-04-23T05:47:04.743Z",
+    "lastChecked": "2025-04-23T05:47:04.743Z",
+    "summary": "zkVerify is a specialized L1 for ZKP verification, aiming to simplify development and capture the growing market for at-scale verification in private DeFi, scalability, and proof of humanity applications. It will launch a governance token in 2025.\n\nRelevance: ZKPs enhance privacy, scalability, and interoperability, potentially improving Kaia's functionality and user experience.\n",
+    "publicationDate": "2025-04-23T05:46:38.971Z"
   },
   {
     "url": "https://members.delphidigital.io/reports/story-protocol-does-ip-need-a-chain",
     "title": "Story Protocol: Does IP Need a Chain?",
     "body": "",
-    "timestamp": "2025-04-22T10:34:34.508Z",
-    "scrapedAt": "2025-04-22T10:35:12.588Z",
-    "lastChecked": "2025-04-22T10:35:12.588Z",
-    "summary": "1. Story Protocol is building a specialized L1 for IP management, focusing on programmable licensing, on-chain attribution, and automated royalty distribution in the AI-driven creative economy.\n\nRelevance: Kaia's focus on AI-driven content creation and digital asset management aligns with Story's goals.\n",
-    "publicationDate": "2025-04-22T10:34:34.508Z"
+    "timestamp": "2025-04-23T05:46:38.971Z",
+    "scrapedAt": "2025-04-23T05:47:12.957Z",
+    "lastChecked": "2025-04-23T05:47:12.957Z",
+    "summary": "Story Protocol aims to revolutionize IP management for the AI era with a custom L1, enabling programmable licensing, on-chain attribution, and automated royalty splits. It tackles complexities like AI-generated content and aims to bridge legal standards with crypto.\n\nRelevance: Could inform the development of Kaia's IP management and content distribution capabilities, potentially leveraging blockchain for enhanced attribution and licensing.\n",
+    "publicationDate": "2025-04-23T05:46:38.971Z"
   }
 ]

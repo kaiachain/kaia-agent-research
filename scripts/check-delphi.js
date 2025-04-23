@@ -5,6 +5,7 @@ const { launchBrowser, setupPage } = require('../browser/browser');
 const { login } = require('../services/auth');
 const { checkForNewReports, findNewReports, updateVisitedLinks } = require('../services/reports');
 const { initializeSlack, sendSlackMessage, logMessage, logWithTimestamp } = require('../services/slack');
+const fs = require('fs').promises;
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
@@ -63,7 +64,7 @@ async function checkDelphiWebsite() {
       page, 
       process.env.DELPHI_EMAIL, 
       process.env.DELPHI_PASSWORD, 
-      appConfig.COOKIES_FILE
+      'data/delphi_cookies.json'
     );
     
     if (!loginSuccess) {
@@ -86,7 +87,7 @@ async function checkDelphiWebsite() {
     }
     
     // Find new reports
-    const { newLinks, visitedLinks } = await findNewReports(links, appConfig.VISITED_LINKS_FILE);
+    const { newLinks, visitedLinks } = await findNewReports(links, 'data/visited_links.json');
     
     if (newLinks.length > 0) {
       // Send notification about new reports (this is a summary, so send to Slack)
@@ -96,7 +97,7 @@ async function checkDelphiWebsite() {
       }
       
       // Update visited links with new ones
-      await updateVisitedLinks(newLinks, visitedLinks, appConfig.VISITED_LINKS_FILE);
+      await updateVisitedLinks(newLinks, visitedLinks, 'data/visited_links.json');
       
       // Run the summarize.js script to process new reports
       await runSummarizeScript(Math.min(newLinks.length, 5));

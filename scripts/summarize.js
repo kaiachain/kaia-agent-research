@@ -65,7 +65,10 @@ async function processAllLinks() {
         await logMessage('🔄 Starting to process Delphi Digital reports...', [], false);
 
         // Load cache
-        const cache = await loadCache(appConfig.CACHE_FILE);
+        const cache = await loadCache('data/processed_reports_cache.json');
+
+        // Load visited links
+        let visitedLinks = await loadVisitedLinks();
 
         // In production, this function would call the full processing flow
         // It will be called by the delphi-full-flow.js script

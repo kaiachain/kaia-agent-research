@@ -7,8 +7,7 @@ services:
     container_name: delphi-scraper
     restart: unless-stopped
     volumes:
-      - ./data:/app/src/data
-      - ./data/screenshots:/app/src/data/screenshots
+      - ./data:/app/data
       - ./.env:/app/.env:ro
     env_file:
       - .env
@@ -18,18 +17,17 @@ services:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--no-first-run,--no-zygote,--single-process
     healthcheck:
-      test: ["CMD", "node", "src/scripts/check-delphi.js", "--health-check"]
+      test: ["CMD", "node", "scripts/check-delphi.js", "--health-check"]
       interval: 30s
       timeout: 10s
       retries: 3
     command: >
       sh -c "
-        mkdir -p /app/src/data &&
-        mkdir -p /app/src/data/screenshots &&
-        if [ ! -f /app/src/data/delphi_cookies.json ]; then echo '{}' > /app/src/data/delphi_cookies.json; fi &&
-        if [ ! -f /app/src/data/visited_links.json ]; then echo '[]' > /app/src/data/visited_links.json; fi &&
-        if [ ! -f /app/src/data/processed_reports_cache.json ]; then echo '{}' > /app/src/data/processed_reports_cache.json; fi &&
-        if [ ! -f /app/src/data/unsent_reports.json ]; then echo '[]' > /app/src/data/unsent_reports.json; fi &&
+        mkdir -p /app/data &&
+        if [ ! -f /app/data/delphi_cookies.json ]; then echo '{}' > /app/data/delphi_cookies.json; fi &&
+        if [ ! -f /app/data/visited_links.json ]; then echo '[]' > /app/data/visited_links.json; fi &&
+        if [ ! -f /app/data/processed_reports_cache.json ]; then echo '{}' > /app/data/processed_reports_cache.json; fi &&
+        if [ ! -f /app/data/unsent_reports.json ]; then echo '[]' > /app/data/unsent_reports.json; fi &&
         npm run delphi:run"
     
   # Slack digest service
@@ -40,14 +38,14 @@ services:
   #   container_name: delphi-slack-digest
   #   restart: unless-stopped
   #   volumes:
-  #     - ./data:/app/src/data
+  #     - ./data:/app/data
   #   env_file:
   #     - .env
   #   environment:
   #     - TZ=UTC
   #     - NODE_ENV=production
   #   healthcheck:
-  #     test: ["CMD", "node", "src/scripts/check-delphi.js", "--health-check"]
+  #     test: ["CMD", "node", "scripts/check-delphi.js", "--health-check"]
   #     interval: 30s
   #     timeout: 10s
   #     retries: 3
@@ -63,7 +61,7 @@ services:
   #   container_name: delphi-webhook
   #   restart: unless-stopped
   #   volumes:
-  #     - ./data:/app/src/data
+  #     - ./data:/app/data
   #   env_file:
   #     - .env
   #   environment:
