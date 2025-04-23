@@ -17,7 +17,7 @@ cookie-login-check.png
 
 # Dependencies
 node_modules/
-package-lock.json
+
 
 # Logs
 npm-debug.log*
