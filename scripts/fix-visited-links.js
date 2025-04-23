@@ -28,22 +28,10 @@ async function fixVisitedLinks() {
     // Load the current visited_links.json
     const visitedLinksPath = appConfig.VISITED_LINKS_FILE;
     const visitedLinksData = await fs.readFile(visitedLinksPath, 'utf8');
+    
     const visitedLinks = JSON.parse(visitedLinksData);
     
     console.log(`Found ${visitedLinks.length} entries in visited_links.json`);
-    
-    // Create a backup
-    /*
-    const timestamp = new Date().toISOString().replace(/:/g, '-');
-    const backupPath = path.join(process.cwd(), 'backups', `visited_links.${timestamp}.json`);
-    
-    // Ensure backups directory exists
-    await fs.mkdir(path.join(process.cwd(), 'backups'), { recursive: true });
-    
-    // Save backup
-    await fs.writeFile(backupPath, visitedLinksData);
-    console.log(`Backup created at ${backupPath}`);
-    */
     
     // Fix each entry
     let fixedCount = 0;

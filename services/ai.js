@@ -60,7 +60,21 @@ Do not use phrases like "Here's a summary" or "This report discusses". Start dir
   }
 }
 
+/**
+ * Placeholder function to simulate summarizing report content.
+ * @param {string} content - The content of the report (unused in stub).
+ * @returns {Promise<string>} A placeholder summary.
+ */
+async function summarizeContent(content) {
+  console.log("--- (Stub) Summarizing content... ---");
+  // In a real implementation, this would call the AI/summarization logic
+  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async work
+  return "This is a stub summary.";
+}
+
 module.exports = {
   initializeGemini,
-  getSummaryFromGemini
+  getSummaryFromGemini,
+  summarizeContent
 }; 
+
