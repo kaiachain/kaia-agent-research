@@ -48,5 +48,155 @@
     "lastChecked": "2025-04-23T05:47:12.957Z",
     "summary": "Story Protocol aims to revolutionize IP management for the AI era with a custom L1, enabling programmable licensing, on-chain attribution, and automated royalty splits. It tackles complexities like AI-generated content and aims to bridge legal standards with crypto.\n\nRelevance: Could inform the development of Kaia's IP management and content distribution capabilities, potentially leveraging blockchain for enhanced attribution and licensing.\n",
     "publicationDate": "2025-04-23T05:46:38.971Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/celestias-roadmap-tia-time-or-is-da-a-commodity",
+    "title": "Celestia's Roadmap: $TIA Time, or is DA a Commodity?",
+    "body": "",
+    "timestamp": "2025-04-23T08:03:47.032Z",
+    "scrapedAt": "2025-04-23T08:03:47.032Z",
+    "lastChecked": "2025-04-23T08:03:47.032Z",
+    "summary": "1. Celestia aims to be the leading data availability layer for modular blockchains, but faces challenges from competition and the need for real-world adoption to drive $TIA value.\n\nRelevance: Kaia's modular design and potential use of DA layers like Celestia are directly impacted by the success of this technology.\n",
+    "publicationDate": "2025-04-07T20:47:57Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/mon-protocol-primed-for-ip-expansion",
+    "title": "MON Protocol - Primed for IP Expansion",
+    "body": "",
+    "timestamp": "2025-04-23T08:04:06.300Z",
+    "scrapedAt": "2025-04-23T08:04:06.300Z",
+    "lastChecked": "2025-04-23T08:04:06.300Z",
+    "summary": "MON Protocol, despite market downturn, has a strong treasury, a focus on its flagship game Warden's Ascent, and plans for IP expansion via anime, making it an attractive bet.\n\nRelevance: Evaluating the viability of gaming token models and IP expansion strategies in the broader blockchain space.\n",
+    "publicationDate": "2025-04-03T20:48:04Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/a-proposed-sec-interim-safe-harbor-framework",
+    "title": "A Proposed SEC Interim Safe Harbor Framework",
+    "body": "",
+    "timestamp": "2025-04-23T08:04:20.353Z",
+    "scrapedAt": "2025-04-23T08:04:20.353Z",
+    "lastChecked": "2025-04-23T08:04:20.353Z",
+    "summary": "1. The report proposes an SEC interim safe harbor framework, offering transition relief for projects with public distributions. Solana and a16z, having done public distros, could utilize this framework.\n\nRelevance: Understanding regulatory frameworks is crucial for Kaia's future token offerings and compliance within the digital asset space.\n",
+    "publicationDate": "2025-03-17T19:53:42Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/programmable-asset-ledgers",
+    "title": "Programmable Asset Ledgers Will Eat The World",
+    "body": "",
+    "timestamp": "2025-04-23T08:04:36.027Z",
+    "scrapedAt": "2025-04-23T08:04:36.027Z",
+    "lastChecked": "2025-04-23T08:04:36.027Z",
+    "summary": "1. Programmable asset ledgers (blockchains) will revolutionize finance through tokenization, decentralized infrastructure networks (DeVin & DePin), and stablecoins for global payments, driven by pragmatic adoption.\n\nRelevance: Kaia's infrastructure could support DePin and tokenized assets within its ecosystem.\n",
+    "publicationDate": "2025-03-14T21:49:01Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/evm-wars-between-giga-gas-and-giga-gimmicks",
+    "title": "EVM Wars: Between Giga Gas and Giga Gimmicks",
+    "body": "",
+    "timestamp": "2025-04-23T08:04:49.951Z",
+    "scrapedAt": "2025-04-23T08:04:49.951Z",
+    "lastChecked": "2025-04-23T08:04:49.951Z",
+    "summary": "1. The report discusses the potential for declining valuations in the EVM landscape, with business development and partnerships potentially becoming key differentiators. It also touches on tokenomics and the need for value-driving features beyond governance.\n\nRelevance: Kaia's focus on efficient smart contract execution and interoperability aligns with the report's discussion on EVM competition and token utility.\n",
+    "publicationDate": "2025-03-13T18:34:12Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/finding-the-fun-in-fundamentals-1-mythical-games",
+    "title": "Finding the Fun in Fundamentals #1 - Mythical Games",
+    "body": "",
+    "timestamp": "2025-04-23T08:05:05.737Z",
+    "scrapedAt": "2025-04-23T08:05:05.737Z",
+    "lastChecked": "2025-04-23T08:05:05.737Z",
+    "summary": "1. Mythical Games' NFL Rivals has generated $10.5M in revenue, with 65% from NFT trading. Despite success, the MYTH token has declined, and LiveOps challenges persist in Web3 gaming.\n\nRelevance: Understanding NFT-based game monetization and live operations provides insights for Kaia's gaming initiatives.\n",
+    "publicationDate": "2025-03-06T14:22:20Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/beyond-the-hype-an-objective-analysis-of-hyperliquid",
+    "title": "Beyond the $HYPE: An Objective Analysis of Hyperliquid",
+    "body": "",
+    "timestamp": "2025-04-23T08:05:19.605Z",
+    "scrapedAt": "2025-04-23T08:05:19.605Z",
+    "lastChecked": "2025-04-23T08:05:19.605Z",
+    "summary": "1. Hyperliquid's HLP vault ($297M TVL) dwarfs dYdX's Megavault ($27.6M TVL), both experiencing significant outflows and negative annualized returns, making performance comparison difficult.\n\nRelevance: Understanding vault performance and trading volume dynamics is crucial for optimizing Kaia's own trading strategies and liquidity provision.\n",
+    "publicationDate": "2025-02-27T22:03:01Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/squads-transition-from-multisigs-to-crypto-native-fintech-infrastructure",
+    "title": "Squads' Expansion from Multisigs to Crypto-Native Fintech Infrastructure",
+    "body": "",
+    "timestamp": "2025-04-23T08:05:33.527Z",
+    "scrapedAt": "2025-04-23T08:05:33.527Z",
+    "lastChecked": "2025-04-23T08:05:33.527Z",
+    "summary": "Squads is expanding from a Solana multisig solution to a full-stack financial infrastructure, including the Squads App, Fuse Wallet, and Squads API for treasury management and payments.\n\nRelevance: Squads' approach to onchain financial infrastructure aligns with Kaia's focus on providing scalable and secure blockchain solutions.\n",
+    "publicationDate": "2025-02-25T16:05:12Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/the-battle-of-the-ai-agent-frameworks",
+    "title": "The Battle of the AI Agent Frameworks",
+    "body": "",
+    "timestamp": "2025-04-23T08:05:48.403Z",
+    "scrapedAt": "2025-04-23T08:05:48.403Z",
+    "lastChecked": "2025-04-23T08:05:48.403Z",
+    "summary": "1. The report discusses the potential use of ElizaOS for prototyping AI solutions, with a possible switch to ARC for the final product, raising questions about ARC's value accrual.\n\nRelevance: Kaia's focus on AI agent frameworks makes understanding the competitive landscape and adoption strategies crucial.\n",
+    "publicationDate": "2025-02-19T18:08:40Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/proof-of-gamer-how-kgen-is-reimagining-user-acquisition",
+    "title": "Proof of Gamer: How KGeN is Reimagining User Acquisition",
+    "body": "",
+    "timestamp": "2025-04-23T08:06:03.522Z",
+    "scrapedAt": "2025-04-23T08:06:03.522Z",
+    "lastChecked": "2025-04-23T08:06:03.522Z",
+    "summary": "1. KGeN is a blockchain-powered platform using a Proof of Gamer (PoG) engine to acquire users for gaming publishers, focusing on the Global South and incentivizing engagement. They have seen rapid growth and aim to transition from financial rewards to intrinsic engagement.\n\nRelevance: KGeN leverages blockchain for user acquisition, aligning with Kaia's tech stack and ecosystem, particularly in markets like India, where Kaia is also active.\n",
+    "publicationDate": "2025-02-18T16:33:27Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/initia-fulfilling-the-appchain-vision",
+    "title": "Initia: Fulfilling The Appchain Vision",
+    "body": "",
+    "timestamp": "2025-04-23T08:06:19.320Z",
+    "scrapedAt": "2025-04-23T08:06:19.320Z",
+    "lastChecked": "2025-04-23T08:06:19.320Z",
+    "summary": "1. Initia's appchain vision is discussed, with a focus on the interoperability challenges of Optimism's Superchain and its dependence on Ethereum for data availability.\n\nRelevance: Kaia's architecture, with its modular design and focus on data availability, is directly impacted by these interop challenges.\n",
+    "publicationDate": "2025-02-14T16:49:10Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/market-musings-uncertainty-permeates-the-market",
+    "title": "Market Musings - Uncertainty Permeates The Market",
+    "body": "",
+    "timestamp": "2025-04-23T08:06:35.444Z",
+    "scrapedAt": "2025-04-23T08:06:35.444Z",
+    "lastChecked": "2025-04-23T08:06:35.444Z",
+    "summary": "1. An internal \"Top Signal\" indicator, aggregating on-chain, sentiment, and macroeconomic data (0-100 score) to gauge Bitcoin's potential tops and bottoms, is under development.\n\nRelevance: Kaia's AI-driven insights could integrate such indicators for enhanced market analysis and forecasting.\n",
+    "publicationDate": "2025-02-07T20:26:30Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/zenrock-paving-the-path-in-dmpc",
+    "title": "Zenrock: Paving the Path in dMPC",
+    "body": "",
+    "timestamp": "2025-04-23T08:06:50.322Z",
+    "scrapedAt": "2025-04-23T08:06:50.322Z",
+    "lastChecked": "2025-04-23T08:06:50.322Z",
+    "summary": "1. Zenrock utilizes dMPC technology to solve blockchain interoperability challenges, focusing on its wrapped Bitcoin product, zenBTC, which offers yield and multichain compatibility.\n\nRelevance: Kaia can leverage dMPC for secure cross-chain interactions and potentially integrate zenBTC.\n",
+    "publicationDate": "2025-02-03T13:46:46Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/megaeth-performance-to-compete-with-tradfi",
+    "title": "MegaETH: Performance to Compete With TradFi",
+    "body": "",
+    "timestamp": "2025-04-23T08:07:05.350Z",
+    "scrapedAt": "2025-04-23T08:07:05.350Z",
+    "lastChecked": "2025-04-23T08:07:05.350Z",
+    "summary": "1. The report snippet discusses MegaETH, its curated ecosystem, and ambitious builders. Questions are raised about the test net timeline, roadmap, and commentary on schisms within the Ethereum community.\n\nRelevance: Evaluating competing Ethereum-based projects and understanding potential technology advancements is vital for Kaia's strategic planning and competitive analysis.\n",
+    "publicationDate": "2025-01-30T17:31:45Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/market-musings-new-year-more-volatility",
+    "title": "Market Musings - New Year, More Volatility",
+    "body": "",
+    "timestamp": "2025-04-23T08:07:19.536Z",
+    "scrapedAt": "2025-04-23T08:07:19.536Z",
+    "lastChecked": "2025-04-23T08:07:19.536Z",
+    "summary": "1. Markets experienced volatility after the November election and a hawkish FOMC, with the inauguration failing to provide a lasting bullish catalyst; Bitcoin is consolidating within a range.\n\nRelevance: Kaia's analysis of market trends and volatility is essential for informed risk management and strategic decision-making within its financial ecosystem.\n",
+    "publicationDate": "2025-01-28T21:59:53Z"
   }
 ]
