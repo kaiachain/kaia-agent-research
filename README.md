@@ -46,9 +46,11 @@ delphi/
 │   │   ├── delphi_cookies.json  # Stored cookies
 │   │   ├── processed_reports_cache.json  # Processed reports
 │   │   └── visited_links.json # Links that have been visited
+│   │   └── digest_state.json # Stores timestamp of last digest run (for 'now' schedule)
 │   ├── scripts/              # Main application scripts
 │   │   ├── check-delphi.js   # Script to check for new reports
 │   │   └── summarize.js      # Script to summarize reports
+│   │   └── send-slack-digest.js # Script to send daily digest to Slack
 │   ├── services/             # Business logic modules
 │   │   ├── ai.js             # Gemini AI service
 │   │   ├── auth.js           # Authentication service
@@ -107,6 +109,11 @@ GEMINI_API_KEY=your_gemini_api_key
 # Slack integration
 SLACK_TOKEN=your_slack_bot_token
 SLACK_CHANNEL_ID=your_slack_channel_id
+
+# Optional: Schedule for daily digest. Use a cron-like format (e.g., "0 9 * * *" for 9 AM UTC)
+# or "now" to send immediately based on reports since the last successful 'now' run.
+# If not set or "now", the digest must be triggered manually or via the main flow.
+SLACK_DIGEST_SCHEDULE="now"
 ```
 
 Optional configuration:
@@ -179,6 +186,87 @@ The Docker setup includes:
 - Pre-configured environment variables for file paths
 - All necessary dependencies for Puppeteer
 - Support for running both the main scraper and digest services
+- The `data/digest_state.json` file will be created automatically in the data volume
+  when `SLACK_DIGEST_SCHEDULE` is set to `"now"` to track the last digest time.
+
+### Troubleshooting
+
+Common issues and solutions:
+
+1. **Login Issues**:
+   - Check your Delphi credentials in `.env`
+   - Delete `src/data/delphi_cookies.json` to force a fresh login
+   - Check the debug screenshots in the root directory
+
+2. **Slack Issues**:
+   - Verify your Slack token and channel ID
+   - Ensure the bot is invited to the channel
+   - Check console output for error messages
+
+3. **Docker Issues**:
+   - Ensure Docker is running
+   - Check container logs: `docker-compose logs`
+   - Verify volume permissions
+   - For Puppeteer errors, check container has all required dependencies
+
+## Error Handling
+
+The system is configured to handle errors gracefully:
+
+- All errors are logged to the console with timestamps for debugging
+- Errors are NOT sent to Slack to avoid cluttering the channel
+- Only report summaries and critical success notifications are sent to Slack
+
+If you need to debug issues:
+
+1. Check the console logs for detailed error messages and stack traces
+2. Look for log entries with timestamp format `[YYYY-MM-DDThh:mm:ss.sssZ] ERROR: ...`
+3. Use the Docker container logs if running in Docker: `docker-compose logs -f`
+
+If you want to modify this behavior, you can:
+- Edit the `logError` function in `src/services/slack.js` 
+- Uncomment the error notification lines in the catch blocks if you want errors in Slack
+
+## License
+
+ISC 
+
+## Slack Integration
+
+This tool can send notifications to a configured Slack channel:
+- **Individual Report Summaries**: Sent immediately after a new report is processed (if Slack is initialized correctly in the main flow).
+- **Daily Digest**: A consolidated message summarizing reports processed within a specific timeframe.
+
+**Digest Behavior:**
+- The timing and content of the daily digest are controlled by the `SLACK_DIGEST_SCHEDULE` environment variable:
+  - **`SLACK_DIGEST_SCHEDULE="now"`**: When the digest script runs (either manually via `npm run digest` or automatically if integrated into the main flow's end), it will send summaries for reports processed *since the last time the "now" digest was successfully run*. It tracks this using the `data/digest_state.json` file.
+  - **`SLACK_DIGEST_SCHEDULE="<cron_schedule>"` (e.g., `"0 9 * * *"` for 9 AM UTC)**: The script uses a fixed lookback period (currently hardcoded as 24 hours in `send-slack-digest.js`) to gather reports when run. You would typically trigger this script using an external scheduler like `cron` based on the desired schedule. *Note: The current setup doesn't automatically schedule based on the cron string; it only uses it to adjust the lookback logic if provided.*
+  - **Not Set / Empty**: If the variable is not set, running the digest script defaults to the fixed lookback period (like the cron schedule case) and relies on manual triggering.
+
+## Docker Setup
+
+1. **Build and start the container**:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **View logs**:
+   ```bash
+   docker-compose logs -f
+   ```
+
+3. **Run the Slack digest service**:
+   ```bash
+   docker-compose run --rm slack-digest
+   ```
+
+The Docker setup includes:
+- Automatic volume mounting for data persistence
+- Pre-configured environment variables for file paths
+- All necessary dependencies for Puppeteer
+- Support for running both the main scraper and digest services
+- The `data/digest_state.json` file will be created automatically in the data volume
+  when `SLACK_DIGEST_SCHEDULE` is set to `"now"` to track the last digest time.
 
 ### Troubleshooting
 
