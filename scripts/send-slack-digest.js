@@ -3,16 +3,17 @@ require('dotenv').config();
 const fs = require('fs').promises;
 const path = require('path');
 const { config, loadConfigFromEnv } = require('../config/config');
-const { initializeSlack, sendSlackMessage, logWithTimestamp, logError } = require('../services/slack'); // Reusing existing Slack functions
+const { initializeSlack, sendSlackMessage } = require('../services/slack');
+const logger = require('./logger'); // Import the shared logger
 
 // --- Configuration ---
 const appConfig = loadConfigFromEnv();
 // Ensure SLACK_CONFIG exists and has defaults if not fully loaded
 appConfig.SLACK_CONFIG = appConfig.SLACK_CONFIG || {};
-const slackInitialized = initializeSlack(appConfig.SLACK_TOKEN, appConfig.SLACK_CONFIG.channelId); // Initialize Slack service
-const VISITED_LINKS_PATH = path.resolve(__dirname, '..', 'data/visited_links.json');
-const DIGEST_STATE_PATH = path.resolve(__dirname, '..', 'data/digest_state.json'); // Path for storing last digest time
-const DIGEST_HOURS = 24; // How many hours back to check for recent reports (fallback)
+const slackInitialized = initializeSlack(appConfig.SLACK_TOKEN, appConfig.SLACK_CONFIG.channelId, appConfig.SLACK_CONFIG.historyFile); // Pass history file path
+const VISITED_LINKS_PATH = path.resolve(__dirname, '..', appConfig.VISITED_LINKS_FILE || 'data/visited_links.json'); // Use config path
+const DIGEST_STATE_PATH = path.resolve(__dirname, '..', appConfig.SLACK_CONFIG.digestStateFile || 'data/digest_state.json'); // Use config path
+const DIGEST_HOURS = appConfig.SLACK_CONFIG.digestLookbackHours || 24; // Use config value
 
 // --- Helper Functions ---
 
@@ -26,17 +27,17 @@ async function loadReports(filePath) {
         const data = await fs.readFile(filePath, 'utf8');
         const reports = JSON.parse(data);
         if (!Array.isArray(reports)) {
-            logWithTimestamp(`Warning: '${filePath}' does not contain a JSON list. Returning empty list.`, 'warn');
+            logger.warn(`'${filePath}' does not contain a valid JSON array. Returning empty list.`);
             return [];
         }
         return reports;
     } catch (error) {
         if (error.code === 'ENOENT') {
-            logWithTimestamp(`'${filePath}' not found. No reports to process.`, 'warn');
+            logger.warn(`'${filePath}' not found. No reports to process for digest.`);
         } else if (error instanceof SyntaxError) {
-            logError(`Error decoding JSON from '${filePath}'.`, error);
+            logger.error(`Error decoding JSON from '${filePath}': ${error.message}`);
         } else {
-            logError(`An unexpected error occurred loading reports from ${filePath}:`, error);
+            logger.error(`An unexpected error occurred loading reports from ${filePath}: ${error.message}`, { stack: error.stack });
         }
         return [];
     }
@@ -53,19 +54,19 @@ async function loadLastDigestTime() {
         if (state && state.lastDigestSentAt) {
             const lastTime = new Date(state.lastDigestSentAt);
             if (!isNaN(lastTime)) {
-                logWithTimestamp(`Loaded last digest time: ${lastTime.toISOString()}`, 'debug');
+                logger.debug(`Loaded last digest time: ${lastTime.toISOString()}`);
                 return lastTime;
             }
         }
-        logWithTimestamp('No valid last digest timestamp found in state file.', 'warn');
+        logger.warn('No valid last digest timestamp found in state file.');
         return null;
     } catch (error) {
         if (error.code === 'ENOENT') {
-            logWithTimestamp(`'${DIGEST_STATE_PATH}' not found. Assuming first run for 'now' schedule.`, 'info');
+            logger.info(`'${DIGEST_STATE_PATH}' not found. Assuming first run for digest.`);
         } else if (error instanceof SyntaxError) {
-            logError(`Error decoding JSON from '${DIGEST_STATE_PATH}'.`, error);
+            logger.error(`Error decoding JSON from '${DIGEST_STATE_PATH}': ${error.message}`);
         } else {
-            logError(`Error loading last digest time from ${DIGEST_STATE_PATH}:`, error);
+            logger.error(`Error loading last digest time from ${DIGEST_STATE_PATH}: ${error.message}`, { stack: error.stack });
         }
         return null;
     }
@@ -81,9 +82,9 @@ async function saveLastDigestTime(timestamp) {
         const state = { lastDigestSentAt: timestamp.toISOString() };
         await fs.mkdir(path.dirname(DIGEST_STATE_PATH), { recursive: true }); // Ensure directory exists
         await fs.writeFile(DIGEST_STATE_PATH, JSON.stringify(state, null, 2), 'utf8');
-        logWithTimestamp(`Saved current digest time: ${state.lastDigestSentAt}`, 'debug');
+        logger.debug(`Saved current digest time: ${state.lastDigestSentAt}`);
     } catch (error) {
-        logError(`Error saving last digest time to ${DIGEST_STATE_PATH}:`, error);
+        logger.error(`Error saving last digest time to ${DIGEST_STATE_PATH}: ${error.message}`, { stack: error.stack });
     }
 }
 
@@ -102,14 +103,14 @@ function filterRecentReports(reports, schedule, lastDigestTime, hoursAgo) {
 
     if (schedule === 'now' && lastDigestTime) {
         timeThreshold = lastDigestTime;
-        logWithTimestamp(`Filtering reports since last digest at ${timeThreshold.toISOString()}`, 'info');
+        logger.info(`Filtering reports for digest since last sent time: ${timeThreshold.toISOString()}`);
     } else {
         const fallbackHours = (schedule === 'now' && !lastDigestTime) ? hoursAgo : hoursAgo; // Use hoursAgo if 'now' but first run, or if schedule is not 'now'
         timeThreshold = new Date(now.getTime() - fallbackHours * 60 * 60 * 1000);
         if (schedule === 'now') {
-             logWithTimestamp(`First run or no previous time found for 'now' schedule. Filtering reports in the last ${fallbackHours} hours (since ${timeThreshold.toISOString()}).`, 'info');
+             logger.info(`First run or no previous digest time found. Filtering reports in the last ${fallbackHours} hours (since ${timeThreshold.toISOString()}).`);
         } else {
-             logWithTimestamp(`Filtering reports in the last ${fallbackHours} hours (since ${timeThreshold.toISOString()}).`, 'info');
+             logger.info(`Filtering reports for digest in the last ${fallbackHours} hours (since ${timeThreshold.toISOString()}).`);
         }
     }
 
@@ -124,7 +125,6 @@ function filterRecentReports(reports, schedule, lastDigestTime, hoursAgo) {
 
             // Filter condition: last checked date must be *strictly greater than* the threshold
             // to avoid resending the exact same report that triggered the last update.
-            // Only use >= if threshold is based on hoursAgo (fallback)
             const comparisonTime = (schedule === 'now' && lastDigestTime) ? lastDigestTime.getTime() : timeThreshold.getTime();
             const checkTime = lastCheckedDt.getTime();
 
@@ -135,7 +135,7 @@ function filterRecentReports(reports, schedule, lastDigestTime, hoursAgo) {
                 }
             }
         } catch (e) {
-             logError(`Error parsing date string "${lastCheckedStr}" for report ${report.url}`, e)
+             logger.error(`Error parsing date string "${lastCheckedStr}" for report ${report.url}: ${e.message}`);
         }
     }
 
@@ -152,22 +152,23 @@ function filterRecentReports(reports, schedule, lastDigestTime, hoursAgo) {
 /**
  * Formats the list of reports into Slack message blocks.
  * @param {Array<object>} reports
+ * @param {number} lookbackHours - The number of hours the digest covers.
  * @returns {Array<object> | null} Slack blocks array or null if no reports.
  */
-function formatDigestMessage(reports) {
+function formatDigestMessage(reports, lookbackHours) {
     if (!reports || reports.length === 0) {
         return null; // No message needed
     }
 
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     let messageBlocks = [
         {
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": `📰 Delphi Digital Daily Digest - ${todayStr}`,
+                "text": `📰 Delphi Digital Report Digest - ${todayStr}`,
                 "emoji": true
             }
         },
@@ -175,7 +176,7 @@ function formatDigestMessage(reports) {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": `Here are the summaries for reports processed in the last ${DIGEST_HOURS} hours:`
+                "text": `Here are summaries for the ${reports.length === 1 ? 'report' : `${reports.length} reports`} processed since the last digest${reports.length > 1 ? 's' : ''} (approx. last ${lookbackHours} hours):`
             }
         },
         {"type": "divider"}
@@ -193,10 +194,10 @@ function formatDigestMessage(reports) {
             try {
                 const pubDateDt = new Date(report.publicationDate);
                  if (!isNaN(pubDateDt)) {
-                    pubDateStr = pubDateDt.toISOString().split('T')[0]; // YYYY-MM-DD
+                    pubDateStr = pubDateDt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                  }
             } catch (e) {
-                 logWithTimestamp(`Could not parse publicationDate '${report.publicationDate}' for report ${report.url}`, 'warn')
+                 logger.warn(`Could not parse publicationDate '${report.publicationDate}' for report ${report.url}`);
             }
         }
 
@@ -205,7 +206,7 @@ function formatDigestMessage(reports) {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": `📝 *<${report.url || '#'}|${report.title || 'Untitled Report'}>* (${pubDateStr})`
+                    "text": `📝 *<${report.url || '#'}|${report.title || 'Untitled Report'}>* \n*Published:* ${pubDateStr}`
                 }
             },
             {
@@ -221,7 +222,7 @@ function formatDigestMessage(reports) {
 
     // Slack messages have a limit of 50 blocks. Truncate if necessary.
     if (messageBlocks.length > 50) {
-        logWithTimestamp(`Digest generated ${messageBlocks.length} blocks, truncating to 50.`, 'warn');
+        logger.warn(`Digest generated ${messageBlocks.length} blocks, truncating to 50.`);
         messageBlocks = messageBlocks.slice(0, 49); // Keep first 49 blocks
         messageBlocks.push({
             "type": "section",
@@ -244,91 +245,115 @@ function formatDigestMessage(reports) {
  */
 async function sendDigest(blocks, schedule) {
     if (!slackInitialized) {
-        logError('Slack is not initialized. Cannot send digest. Check SLACK_TOKEN and SLACK_CHANNEL_ID environment variables.');
+        logger.error('Slack is not initialized. Cannot send digest. Check SLACK_TOKEN and SLACK_CHANNEL_ID environment variables.');
         return false;
     }
     if (!blocks) {
-        logWithTimestamp('No recent reports qualify for the digest based on the schedule.', 'info');
-        // If schedule is 'now', we should still update the timestamp even if nothing was sent,
-        // so the *next* 'now' run looks from this point forward.
+        logger.info('No new reports found for digest.');
         if (schedule === 'now') {
             await saveLastDigestTime(new Date());
+            logger.debug('Updated last digest time even though no reports were sent (schedule=now).');
         }
-        return true; // Not an error, just nothing to send
+        return true; // Nothing to send, considered success
     }
 
+    const digestSummaryText = `Delphi Digital Report Digest - ${new Date().toLocaleDateString()}`;
+
     try {
-        const success = await sendSlackMessage(
-             `Delphi Digital Daily Digest - ${new Date().toISOString().split('T')[0]}`, // Title/Fallback text
-             blocks, // The formatted blocks
-             true // Assuming 'true' means send as primary message
-        );
-        if (success) {
-            logWithTimestamp(`Successfully sent daily digest to Slack channel ${appConfig.SLACK_CONFIG.channelId}.`);
-            // Save timestamp only on success *and* if schedule is 'now'
+        const messageTs = await sendSlackMessage(digestSummaryText, blocks);
+        if (messageTs) {
+             logger.info('Digest sent successfully to Slack.');
             if (schedule === 'now') {
                 await saveLastDigestTime(new Date());
             }
             return true;
         } else {
-            logError('Failed to send daily digest via sendSlackMessage.');
+             logger.error('Failed to send digest message to Slack (sendSlackMessage returned null/false).');
             return false;
         }
     } catch (error) {
-        logError('An unexpected error occurred sending the Slack digest:', error);
+        logger.error(`Failed to send digest message to Slack: ${error.message}`, { stack: error.stack });
         return false;
     }
 }
 
 // --- Main Execution ---
+
+/**
+ * Main function to generate and send the digest.
+ */
 async function runDigest() {
-    logWithTimestamp("--- Starting Daily Digest Script ---", 'info');
-    const schedule = appConfig.SLACK_CONFIG?.digestSchedule; // Get schedule from config
-    logWithTimestamp(`Digest schedule: ${schedule || 'Not set (defaulting to hourly check)'}`, 'info');
+    const schedule = appConfig.SLACK_CONFIG.digestSchedule;
+    logger.info(`Starting Slack digest process (Schedule: ${schedule || 'default'})...`);
 
     const allReports = await loadReports(VISITED_LINKS_PATH);
-
-    // Load the last digest time only if the schedule is 'now'
-    let lastDigestTime = null;
-    if (schedule === 'now') {
-        lastDigestTime = await loadLastDigestTime();
+    if (allReports.length === 0) {
+        logger.info('No reports found in visited links file. Exiting digest process.');
+        return;
     }
 
-    // Pass schedule and last time to filter function
+    const lastDigestTime = await loadLastDigestTime();
     const recentReports = filterRecentReports(allReports, schedule, lastDigestTime, DIGEST_HOURS);
 
     if (recentReports.length > 0) {
-        logWithTimestamp(`Found ${recentReports.length} recent reports to include in the digest.`);
-        const digestBlocks = formatDigestMessage(recentReports);
-        // Pass schedule to send function
-        await sendDigest(digestBlocks, schedule);
+        logger.info(`Found ${recentReports.length} recent reports to include in the digest.`);
+        const messageBlocks = formatDigestMessage(recentReports, DIGEST_HOURS);
+        const success = await sendDigest(messageBlocks, schedule);
+        if (!success) {
+             logger.error('Digest sending failed.');
+             process.exitCode = 1; // Indicate failure
+        }
     } else {
-        logWithTimestamp(`No new reports found since the last check time based on schedule '${schedule}'.`, 'info');
-         // If schedule is 'now', update the timestamp even if nothing new, to mark this check time.
-         if (schedule === 'now') {
-             await sendDigest(null, schedule); // Call sendDigest with null blocks to trigger timestamp save
-         }
-        // Optionally send a "nothing new" message if schedule is *not* 'now'
-        // if (schedule !== 'now') {
-        //    await sendDigest([{"type": "section", "text": {"type": "mrkdwn", "text": `No new Delphi reports processed in the last ${DIGEST_HOURS} hours.`}}], schedule);
-        // }
+        logger.info('No recent reports found to include in the digest.');
+        if (schedule === 'now') {
+            await saveLastDigestTime(new Date());
+            logger.debug('Updated last digest time even though no reports were sent (schedule=now).');
+        }
     }
 
-    logWithTimestamp("--- Daily Digest Script Finished ---", 'info');
+    logger.info('Slack digest process finished.');
 }
 
-// Execute if run directly
+/**
+ * Determines if the digest should run based on the schedule.
+ * For cron schedules, this script should be called by cron.
+ * For "now" schedule, it runs if called directly.
+ */
+function shouldRunDigest() {
+    const schedule = appConfig.SLACK_CONFIG.digestSchedule;
+
+    if (schedule === 'now') {
+        logger.info('Digest schedule set to "now", running immediately.');
+        return true;
+    }
+
+    if (schedule && schedule !== 'manual') {
+         logger.info(`Digest schedule is "${schedule}". Assumed to be handled by an external scheduler (like cron). This script run will exit unless called with --force.`);
+         const forceRun = process.argv.includes('--force');
+         if (forceRun) {
+             logger.info('--force flag detected. Running digest despite schedule configuration.');
+             return true;
+         }
+         return false;
+    }
+
+    logger.info('Digest schedule is not set or set to manual. Run manually or via command.');
+    return false; // Don't run automatically if schedule is undefined, empty, or 'manual'
+}
+
+// --- Script Entry Point ---
 if (require.main === module) {
-    runDigest().catch(error => {
-        logError("Fatal error in digest script:", error);
-        process.exit(1);
-    });
-}
-
-module.exports = {
-    runDigest,
-    loadReports,
-    filterRecentReports,
-    formatDigestMessage,
-    sendDigest
-}; 
+    if (shouldRunDigest()) {
+        runDigest().catch(error => {
+            logger.error(`Unhandled error during digest generation: ${error.message}`, { stack: error.stack });
+            process.exit(1);
+        });
+    } else {
+         logger.info('Digest will not run based on current schedule configuration.');
+    }
+} else {
+    // If required as a module, perhaps for scheduling internally?
+    // logger.info('Slack digest script loaded as a module.');
+    // Expose runDigest if needed?
+    // module.exports = { runDigest };
+} 

@@ -1,4 +1,5 @@
 const fs = require('fs').promises;
+const logger = require('../scripts/logger'); // Import the shared logger
 
 /**
  * Fetches report links from the Delphi website, stopping when the last visited link is found.
@@ -9,8 +10,10 @@ const fs = require('fs').promises;
  */
 async function checkForNewReports(page, url, lastVisitedUrl) {
   try {
-    console.log('Checking for new reports...');
-    console.log(`Navigating to URL: ${url}`);
+    // console.log('Checking for new reports...');
+    logger.info('Checking for new reports...');
+    // console.log(`Navigating to URL: ${url}`);
+    logger.info(`Navigating to URL: ${url}`);
     
     // Add retry logic for navigation
     let retryCount = 0;
@@ -23,15 +26,18 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
           waitUntil: 'networkidle0',
           timeout: 60000
         });
-        console.log('Page loaded successfully');
+        // console.log('Page loaded successfully');
+        logger.info('Page loaded successfully');
         
         // Verify we're on the correct page
         const currentUrl = page.url();
-        console.log('Current URL:', currentUrl);
+        // console.log('Current URL:', currentUrl);
+        logger.info(`Current URL: ${currentUrl}`);
         
         if (currentUrl.includes('/login')) {
-          console.log('Redirected to login page - session may have expired');
-          throw new Error('Authentication required');
+          // console.log('Redirected to login page - session may have expired');
+          logger.warn('Redirected to login page - session may have expired');
+          throw new Error('Authentication required, redirected to login page');
         }
         
         // Wait for the content to be fully loaded
@@ -39,33 +45,39 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
           timeout: 30000,
           visible: true
         });
-        console.log('Found report links on page');
+        // console.log('Found report links on page');
+        logger.info('Found report links indicator on page');
         
         // Verify we can actually see the content
         const pageText = await page.evaluate(() => document.body.innerText);
-        if (pageText.toLowerCase().includes('sign in') || pageText.toLowerCase().includes('log in')) {
-          console.log('Found login text on page - session may be invalid');
-          throw new Error('Invalid session');
+        if (pageText.toLowerCase().includes('sign in to continue') || pageText.toLowerCase().includes('log in to access')) {
+          // console.log('Found login text on page - session may be invalid');
+           logger.warn('Found login prompt text on page - session may be invalid or expired.');
+          throw new Error('Invalid session: Login prompt detected on page');
         }
         
         break; // If we get here, everything is good
       } catch (error) {
         retryCount++;
-        console.log(`Attempt ${retryCount} failed:`, error.message);
+        // console.log(`Attempt ${retryCount} failed:`, error.message);
+        logger.warn(`Attempt ${retryCount} to load reports page failed: ${error.message}`);
         
         if (retryCount === maxRetries) {
+           logger.error(`Failed to load reports page after ${maxRetries} attempts: ${error.message}`);
           throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
         }
         
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 5000));
-        console.log('Retrying...');
+        // console.log('Retrying...');
+        logger.info(`Retrying page load (attempt ${retryCount + 1})...`);
       }
     }
     
     // Get page metrics
     const metrics = await page.metrics();
-    console.log('Page metrics:', JSON.stringify(metrics, null, 2));
+    // console.log('Page metrics:', JSON.stringify(metrics, null, 2));
+    logger.debug('Page metrics:', { metrics }); // Log metrics object at debug level
     
     // Take a screenshot of the current state
     // await page.screenshot({ path: 'current-page-state.png', fullPage: true });
@@ -73,7 +85,7 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
     // Extract links from the current page
     const linksData = await page.evaluate((stopUrl) => {
       const reportLinks = document.querySelectorAll('a[href*="/reports/"]');
-      console.log(`Found ${reportLinks.length} potential report links on page`);
+      console.log(`[Browser] Found ${reportLinks.length} potential report links on page`); // Keep console for evaluate
       
       const newLinks = [];
       const uniqueUrls = new Set(); // Keep track of URLs added
@@ -84,7 +96,7 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
 
         // Stop if we hit the last visited URL
         if (stopUrl && currentUrl === stopUrl) {
-          console.log(`Reached last visited URL: ${stopUrl}. Stopping link collection.`);
+          console.log(`[Browser] Reached last visited URL: ${stopUrl}. Stopping link collection.`);
           break; 
         }
 
@@ -95,6 +107,9 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
             title: title
           });
           uniqueUrls.add(currentUrl);
+           console.log(`[Browser] Added link: ${title} (${currentUrl})`);
+        } else if (!uniqueUrls.has(currentUrl)) {
+             console.log(`[Browser] Skipping link with no title: ${currentUrl}`);
         }
       }
       
@@ -120,31 +135,38 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
       scrapedAt: now,
       lastChecked: now,
       summary: "",
-      publicationDate: now 
+      publicationDate: null // Initialize as null, should be fetched later if possible
     }));
 
     if (preparedLinks.length === 0) {
       // This is now expected if no *new* reports are found since the last visited one
-      console.log('No new reports found since the last visit.');
+      // console.log('No new reports found since the last visit.');
+      logger.info('No new reports found since the last visit.');
     } else {
-      console.log(`\nFound ${preparedLinks.length} new reports since last visit:`);
+      // console.log(`\nFound ${preparedLinks.length} new reports since last visit:`);
+      logger.info(`Found ${preparedLinks.length} new reports since last visit:`);
       preparedLinks.forEach((link, index) => {
-        console.log(`${index + 1}. ${link.title}: ${link.url}`);
+        // console.log(`${index + 1}. ${link.title}: ${link.url}`);
+        logger.debug(`${index + 1}. ${link.title}: ${link.url}`); // Log details at debug level
       });
     }
     
     // Return only the array of new links (newest first)
     return preparedLinks;
   } catch (error) {
-    console.error('Error in checkForNewReports:', error);
+    // console.error('Error in checkForNewReports:', error);
+    logger.error(`Error in checkForNewReports: ${error.message}`, { stack: error.stack });
     // Save error state
     try {
       const errorContent = await page.content();
-      await fs.writeFile('error-state.html', errorContent);
+      const errorStatePath = `error_check_reports_${Date.now()}.html`;
+      await fs.writeFile(errorStatePath, errorContent);
       // await page.screenshot({ path: 'error-state.png', fullPage: true });
-      console.log('Error state saved to error-state.html and error-state.png');
+      // logger.info('Error state saved to error-state.html and error-state.png');
+       logger.info(`Error state HTML saved to ${errorStatePath}`);
     } catch (debugError) {
-      console.error('Failed to save error state:', debugError);
+      // console.error('Failed to save error state:', debugError);
+      logger.error(`Failed to save error state HTML: ${debugError.message}`);
     }
     throw error;
   }
@@ -190,8 +212,108 @@ async function updateVisitedLinks(newLinks, visitedLinks, visitedLinksPath) {
 }
 */
 
+/**
+ * Fetches the main textual content of a given report URL (Simplified).
+ * @param {object} page - Puppeteer page object.
+ * @param {string} url - The URL of the report page.
+ * @returns {Promise<string>} The extracted text content or error string.
+ */
+async function fetchReportContent(page, url) {
+  // const timestamp = new Date().toISOString(); // Use logger timestamp instead
+  try {
+    // console.log(`[${timestamp}] INFO: Fetching content for: ${url}`);
+    logger.info(`Fetching content for: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 90000 });
+
+    const reportData = await page.evaluate(() => {
+       const contentSelectors = [
+         'article.report-content', // Specific class
+         'div.prose', // Common class for markdown content
+         'div.report-body', // Another possible class
+         'article', // General article tag
+         '#main-content', // Common ID for main content area
+         'div[role="article"]' // Role attribute
+       ];
+       let element = null;
+       for (const selector of contentSelectors) {
+         element = document.querySelector(selector);
+         if (element) break;
+       }
+       const bodyText = element ? element.innerText : document.body.innerText; // Fallback to body
+
+        // Attempt to find publication date
+       let publicationDate = null;
+       const dateSelectors = [
+           'time[datetime]', // Standard time element
+           'span[class*="date" i]', // Class containing "date"
+           'div[class*="publish" i]', // Class containing "publish"
+           'p[class*="meta" i]' // Meta paragraph
+       ];
+       for (const selector of dateSelectors) {
+           const dateElement = document.querySelector(selector);
+           if (dateElement) {
+               publicationDate = dateElement.getAttribute('datetime') || dateElement.textContent;
+               if (publicationDate) break;
+           }
+       }
+
+        // Clean up extracted date string if necessary
+       if (publicationDate) {
+           publicationDate = publicationDate.trim().replace(/^Published on /i, '');
+           // Attempt to parse into a standard format (optional, can be done later)
+           // try { publicationDate = new Date(publicationDate).toISOString(); } catch(e) { /* ignore parse error */ }
+       }
+
+       return { body: bodyText, publicationDate };
+    });
+
+    if (!reportData || !reportData.body || reportData.body.trim().length === 0) {
+      // console.warn(`[${timestamp}] WARN: Fetched empty content for ${url}.`);
+      logger.warn(`Fetched empty content for ${url}.`);
+      // Save page source for debugging empty content
+        try {
+            const errorContent = await page.content();
+            const errorStatePath = `error_empty_content_${url.split('/').pop()}_${Date.now()}.html`;
+            await fs.writeFile(errorStatePath, errorContent);
+            logger.info(`Saved page HTML for empty content debug to ${errorStatePath}`);
+        } catch (debugError) {
+            logger.error(`Failed to save empty content page HTML: ${debugError.message}`);
+        }
+      return "Error fetching content."; // Return specific error string
+    }
+    // console.log(`[${timestamp}] INFO: Fetched content successfully for ${url}. Length: ${reportData.body.length}`);
+    logger.info(`Fetched content successfully for ${url}. Length: ${reportData.body.length}`);
+     if (reportData.publicationDate) {
+         logger.info(`Extracted publication date: ${reportData.publicationDate}`);
+     }
+     else {
+          logger.warn(`Could not extract publication date for ${url}`);
+     }
+
+    // Return the main body content. The publication date might need separate handling or merging.
+    // For now, let's return just the body to match the previous signature.
+    // TODO: Refactor to return an object { body: string, publicationDate: string | null }
+    return reportData.body; // Return only body for now
+
+  } catch (error) {
+    // console.error(`[${timestamp}] ERROR: Error fetching content for ${url}: ${error.message}`);
+    logger.error(`Error fetching content for ${url}: ${error.message}`, { stack: error.stack });
+    // Optionally save error page source
+    try {
+        const errorContent = await page.content();
+        const errorStatePath = `error_fetch_content_${url.split('/').pop()}_${Date.now()}.html`;
+        await fs.writeFile(errorStatePath, errorContent);
+        logger.info(`Saved error page HTML to ${errorStatePath}`);
+    } catch (debugError) {
+        logger.error(`Failed to save error page HTML: ${debugError.message}`);
+    }
+    return "Error fetching content."; // Return specific error string
+  }
+}
+
 module.exports = {
   checkForNewReports,
   // findNewReports, // Removed
   // updateVisitedLinks // Removed
+  fetchReportContent
 }; 

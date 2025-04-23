@@ -19,7 +19,7 @@
     "check": "node scripts/check-delphi.js",
     "digest": "node scripts/slack-digest.js",
     "webhook": "node scripts/slack-webhook.js",
-    "delphi:run": "node scripts/delphi-full-flow.js",
+    "delphi:run": "node scripts/delphi-full-flow.js && node scripts/send-slack-digest.js",
     "delphi:daemon": "node scripts/delphi-full-flow.js --daemon",
     "delphi:stop": "node cli/stop-daemon.js",
     "delphi:fix-links": "node scripts/fix-visited-links.js",
@@ -42,6 +42,8 @@
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "puppeteer-core": "^24.6.1"
+    "node-cron": "^3.0.3",
+    "puppeteer-core": "^24.6.1",
+    "winston": "^3.17.0"
   }
 }

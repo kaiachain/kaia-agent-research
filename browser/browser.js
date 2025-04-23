@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer-core');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
-const { logWithTimestamp } = require('../services/slack');
+const logger = require('../scripts/logger');
 
 // Function to save cookies from the browser session
 async function saveCookies(page, cookiesFile) {
@@ -13,11 +13,11 @@ async function saveCookies(page, cookiesFile) {
     await fs.writeFile(cookiesFile, JSON.stringify(cookies, null, 2));
     
     const cookieNames = cookies.map(cookie => cookie.name);
-    logWithTimestamp(`${cookies.length} cookies saved to ${cookiesFile}`);
-    logWithTimestamp(`Cookie names: ${cookieNames.join(', ')}`);
+    logger.info(`${cookies.length} cookies saved to ${cookiesFile}`);
+    logger.debug(`Cookie names: ${cookieNames.join(', ')}`);
     return true;
   } catch (error) {
-    logWithTimestamp(`Error saving cookies: ${error.message}`, 'error');
+    logger.error(`Error saving cookies to ${cookiesFile}: ${error.message}`, { stack: error.stack });
     return false;
   }
 }
@@ -28,22 +28,24 @@ async function loadCookies(page, cookiesFile) {
     const cookiesString = await fs.readFile(cookiesFile, 'utf8');
     const cookies = JSON.parse(cookiesString);
     
-    if (!cookies.length) {
-      logWithTimestamp('No cookies found in file');
+    if (!cookies || cookies.length === 0) {
+      logger.info(`No cookies found in ${cookiesFile}`);
       return false;
     }
     
     await page.setCookie(...cookies);
     
     const cookieNames = cookies.map(cookie => cookie.name);
-    logWithTimestamp(`Loaded ${cookies.length} cookies from file`);
-    logWithTimestamp(`Cookie names: ${cookieNames.join(', ')}`);
+    logger.info(`Loaded ${cookies.length} cookies from ${cookiesFile}`);
+    logger.debug(`Cookie names: ${cookieNames.join(', ')}`);
     return true;
   } catch (error) {
     if (error.code === 'ENOENT') {
-      logWithTimestamp('No cookies file found, will proceed with normal login');
+      logger.info(`Cookies file not found at ${cookiesFile}. Proceeding with normal login.`);
+    } else if (error instanceof SyntaxError) {
+      logger.error(`Error parsing JSON from cookies file ${cookiesFile}: ${error.message}`);
     } else {
-      logWithTimestamp(`Error loading cookies: ${error.message}`, 'error');
+      logger.error(`Error loading cookies from ${cookiesFile}: ${error.message}`, { stack: error.stack });
     }
     return false;
   }
@@ -52,7 +54,7 @@ async function loadCookies(page, cookiesFile) {
 // Function to verify cookie login
 async function verifyCookieLogin(page, url = 'https://members.delphidigital.io/reports') {
   try {
-    logWithTimestamp('Verifying cookie authentication...');
+    logger.info('Verifying cookie authentication...');
     await page.goto(url, {
       waitUntil: 'networkidle0',
       timeout: 60000
@@ -61,28 +63,35 @@ async function verifyCookieLogin(page, url = 'https://members.delphidigital.io/r
     // Check if we're logged in
     const isLoggedIn = await page.evaluate(() => {
       // Check for elements that would indicate we're logged in
-      const hasLoginForm = document.querySelector('form input[type="password"]') !== null;
-      const hasReports = document.querySelector('.reports-container, .article-list, .content-area, .dashboard') !== null;
-      
-      // Look for logout link or button
+      const hasLoginForm = document.querySelector('form input[type="password"], form input[name*="pass"], form #password') !== null;
+      const hasUsernameField = document.querySelector('form input[type="email"], form input[name*="user"], form #username') !== null;
+      // More robust check for reports/dashboard content
+      const hasContentArea = document.querySelector('.reports-container, .article-list, .content-area, .dashboard, main[role="main"], #main-content') !== null;
+
+      // Look for logout link or button more broadly
       const logoutElements = Array.from(document.querySelectorAll('a, button')).filter(el => {
-        const text = el.textContent.toLowerCase();
-        const href = el.getAttribute('href') || '';
-        return text.includes('logout') || text.includes('sign out') || href.includes('logout');
+        const text = (el.textContent || '').toLowerCase();
+        const href = (el.getAttribute('href') || '');
+        return text.includes('logout') || text.includes('sign out') || href.includes('logout') || href.includes('signout');
       });
-      
-      return (!hasLoginForm && (hasReports || logoutElements.length > 0));
+
+      // We are likely logged in if there's no login form AND (there is dashboard content OR a logout button)
+      return (!hasLoginForm || !hasUsernameField) && (hasContentArea || logoutElements.length > 0);
     });
 
     if (isLoggedIn) {
-      logWithTimestamp('Successfully authenticated using cookies');
+      logger.info('Successfully authenticated using cookies');
       return true;
     } else {
-      logWithTimestamp('Cookie authentication failed, will proceed with normal login');
+      logger.warn('Cookie authentication failed, proceeding with normal login');
       return false;
     }
   } catch (error) {
-    logWithTimestamp(`Error verifying cookie login: ${error.message}`, 'error');
+    if (error.message.includes('Navigation timeout') || error.message.includes('net::')) {
+      logger.error(`Navigation error verifying cookie login at ${url}: ${error.message}`);
+    } else {
+      logger.error(`Error during page evaluation while verifying cookie login: ${error.message}`, { stack: error.stack });
+    }
     return false;
   }
 }
@@ -94,6 +103,7 @@ function isRunningInDocker() {
            (existsSync('/proc/1/cgroup') && 
             readFileSync('/proc/1/cgroup', 'utf-8').includes('docker'));
   } catch (error) {
+    logger.warn(`Error checking for Docker environment: ${error.message}`);
     return false;
   }
 }
@@ -110,10 +120,10 @@ function findLinuxChrome() {
         '/usr/bin/chromium-browser'
       ];
       
-      for (const path of dockerChromePaths) {
-        if (existsSync(path)) {
-          logWithTimestamp(`Using Docker Chrome path: ${path}`);
-          return path;
+      for (const p of dockerChromePaths) {
+        if (existsSync(p)) {
+          logger.debug(`Using Docker Chrome path: ${p}`);
+          return p;
         }
       }
     }
@@ -129,12 +139,14 @@ function findLinuxChrome() {
     
     for (const browser of browsers) {
       try {
-        const path = execSync(`which ${browser}`, { stdio: 'pipe' }).toString().trim();
-        if (path && existsSync(path)) {
-          return path;
+        const browserPath = execSync(`which ${browser}`, { stdio: 'pipe' }).toString().trim();
+        if (browserPath && existsSync(browserPath)) {
+          logger.debug(`Found browser via which: ${browserPath}`);
+          return browserPath;
         }
       } catch (e) {
-        // Command failed, browser not found
+        // Command failed, browser not found via which
+        logger.debug(`Browser '${browser}' not found using 'which'.`);
       }
     }
     
@@ -148,15 +160,17 @@ function findLinuxChrome() {
       '/snap/bin/google-chrome'
     ];
     
-    for (const path of linuxPaths) {
-      if (existsSync(path)) {
-        return path;
+    for (const p of linuxPaths) {
+      if (existsSync(p)) {
+        logger.debug(`Found browser via fallback path: ${p}`);
+        return p;
       }
     }
     
+    logger.warn('Could not find any suitable Chrome/Chromium binary on Linux.');
     return null;
   } catch (error) {
-    logWithTimestamp(`Error finding Chrome on Linux: ${error.message}`, 'warn');
+    logger.error(`Error finding Chrome on Linux: ${error.message}`, { stack: error.stack });
     return null;
   }
 }
@@ -169,76 +183,87 @@ function findMacOSChrome() {
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
     // User-specific paths
-    `${os.homedir()}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
-    `${os.homedir()}/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary`,
-    `${os.homedir()}/Applications/Chromium.app/Contents/MacOS/Chromium`,
-    `${os.homedir()}/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`
+    path.join(os.homedir(), 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+    path.join(os.homedir(), 'Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary'),
+    path.join(os.homedir(), 'Applications/Chromium.app/Contents/MacOS/Chromium'),
+    path.join(os.homedir(), 'Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge')
   ];
   
-  for (const path of macPaths) {
-    if (existsSync(path)) {
-      return path;
+  for (const p of macPaths) {
+    if (existsSync(p)) {
+      logger.debug(`Found browser via standard path: ${p}`);
+      return p;
     }
   }
   
   // Try to find using mdfind (macOS Spotlight CLI)
   try {
-    const mdfindPath = execSync('mdfind "kMDItemCFBundleIdentifier == com.google.Chrome" | head -1', { stdio: 'pipe' }).toString().trim();
-    if (mdfindPath) {
-      const chromePath = `${mdfindPath}/Contents/MacOS/Google Chrome`;
+    // Escape inner single quotes within the single-quoted string
+    const mdfindOutput = execSync('mdfind "kMDItemKind == \'Application\' && kMDItemDisplayName == \'Google Chrome\'" | head -1', { stdio: 'pipe' }).toString().trim();
+    // Example output: /Applications/Google Chrome.app
+    if (mdfindOutput && existsSync(mdfindOutput)) {
+      const chromePath = path.join(mdfindOutput, 'Contents/MacOS/Google Chrome');
       if (existsSync(chromePath)) {
+        logger.debug(`Found browser via mdfind: ${chromePath}`);
         return chromePath;
       }
     }
   } catch (e) {
-    // mdfind command failed
+    logger.debug(`mdfind command failed or did not find Chrome: ${e.message}`);
   }
   
+  logger.warn('Could not find any suitable Chrome/Chromium binary on macOS.');
   return null;
 }
 
 // Find Chrome or Edge on Windows
 function findWindowsChrome() {
+  const programFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const localAppData = process.env.LOCALAPPDATA;
+
   const windowsPaths = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+    path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(programFilesX86, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    path.join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
   ];
-  
-  // Add local app data path if environment variable exists
-  if (process.env.LOCALAPPDATA) {
+
+  if (localAppData) {
     windowsPaths.push(
-      `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
-      `${process.env.LOCALAPPDATA}\\Microsoft\\Edge\\Application\\msedge.exe`
+      path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(localAppData, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
     );
   }
   
-  for (const path of windowsPaths) {
-    if (existsSync(path)) {
-      return path;
+  for (const p of windowsPaths) {
+    if (existsSync(p)) {
+      logger.debug(`Found browser via standard path: ${p}`);
+      return p;
     }
   }
   
+  logger.warn('Could not find any suitable Chrome/Edge binary on Windows.');
   return null;
 }
 
 // Get default Chrome/Chromium path based on OS
 function getDefaultBrowserPath() {
   // Check environment variable first - highest priority
-  if (process.env.PUPPETEER_EXECUTABLE_PATH && existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
-    logWithTimestamp(`Using browser from PUPPETEER_EXECUTABLE_PATH: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (envPath && existsSync(envPath)) {
+    logger.info(`Using browser from PUPPETEER_EXECUTABLE_PATH: ${envPath}`);
+    return envPath;
   }
   
   const platform = os.platform();
   const arch = os.arch();
-  logWithTimestamp(`Detected platform: ${platform}, architecture: ${arch}`);
+  logger.info(`Detected platform: ${platform}, architecture: ${arch}`);
   
   // Check if running in Docker
   const dockerMode = isRunningInDocker();
   if (dockerMode) {
-    logWithTimestamp('Running in Docker container');
+    logger.info('Running in Docker container');
   }
   
   let browserPath = null;
@@ -252,9 +277,9 @@ function getDefaultBrowserPath() {
   }
   
   if (browserPath) {
-    logWithTimestamp(`Found browser at: ${browserPath}`);
+    logger.info(`Found browser at: ${browserPath}`);
   } else {
-    logWithTimestamp('No browser executable found automatically', 'warn');
+    logger.error('Could not automatically find a compatible browser executable. Set PUPPETEER_EXECUTABLE_PATH environment variable.');
   }
   
   return browserPath;
@@ -266,7 +291,7 @@ async function launchBrowser() {
     const executablePath = getDefaultBrowserPath();
     
     if (!executablePath) {
-      logWithTimestamp('No browser executable found automatically', 'warn');
+      logger.error('No browser executable found automatically', 'warn');
       throw new Error(
         'Chrome/Chromium browser not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH in your .env file.\n' +
         'For macOS: Install Google Chrome from https://www.google.com/chrome/\n' +
@@ -335,11 +360,11 @@ async function launchBrowser() {
     
     // Get the version
     const version = await browser.version();
-    logWithTimestamp(`Browser launched successfully: ${version}`);
+    logger.info(`Browser launched successfully: ${version}`);
     
     return browser;
   } catch (error) {
-    logWithTimestamp(`Error launching browser: ${error}`, 'error');
+    logger.error(`Error launching browser: ${error}`, 'error');
     throw error;
   }
 }
