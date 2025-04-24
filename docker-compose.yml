@@ -27,7 +27,6 @@ services:
         if [ ! -f /app/data/delphi_cookies.json ]; then echo '{}' > /app/data/delphi_cookies.json; fi &&
         if [ ! -f /app/data/visited_links.json ]; then echo '[]' > /app/data/visited_links.json; fi &&
         if [ ! -f /app/data/processed_reports_cache.json ]; then echo '{}' > /app/data/processed_reports_cache.json; fi &&
-        if [ ! -f /app/data/unsent_reports.json ]; then echo '[]' > /app/data/unsent_reports.json; fi &&
         npm run delphi:run"
     
   # Slack digest service

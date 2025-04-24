@@ -1,53 +1,63 @@
 [
   {
-    "url": "https://members.delphidigital.io/reports/the-path-to-defis-etf-moment-the-rise-of-morpho-curators-and-mullets",
-    "title": "The Path to DeFi's ETF Moment: The Rise of Morpho, Curators, and Mullets",
+    "url": "https://members.delphidigital.io/reports/story-protocol-does-ip-need-a-chain",
+    "title": "Story Protocol: Does IP Need a Chain?",
     "body": "",
-    "timestamp": "2025-04-23T05:46:38.971Z",
-    "scrapedAt": "2025-04-23T05:46:38.971Z",
-    "lastChecked": "2025-04-23T05:46:38.971Z",
-    "summary": "1. DeFi is evolving with vaults and curators, mirroring ETFs by simplifying access to yield and attracting capital, potentially integrating with CeFi and fintech for broader adoption.\n\nRelevance: Kaia's modular design and focus on user-friendly interfaces align with the report's emphasis on simplifying DeFi access and facilitating CeFi integration.\n",
-    "publicationDate": "2025-04-23T05:46:38.971Z"
-  },
-  {
-    "url": "https://members.delphidigital.io/reports/fuel-os-engineered-playgrounds-for-next-generation-of-apps",
-    "title": "Fuel Network: Engineered Playground For The Next Generation Of Apps",
-    "body": "",
-    "timestamp": "2025-04-23T05:46:38.971Z",
-    "scrapedAt": "2025-04-23T05:46:48.516Z",
-    "lastChecked": "2025-04-23T05:46:48.516Z",
-    "summary": "Fuel Network is building a custom OS (FuelVM) to enhance Ethereum's speed, security, and efficiency, using UTXO and parallel processing for novel applications.\n\nRelevance: Kaia could potentially benefit from the FuelVM architecture for its own high-performance and specialized application development.\n",
-    "publicationDate": "2025-04-23T05:46:38.971Z"
-  },
-  {
-    "url": "https://members.delphidigital.io/reports/policy-formulation-survival-guide-for-security-status",
-    "title": "Policy Formulation Survival Guide for Security Status",
-    "body": "",
-    "timestamp": "2025-04-23T05:46:38.971Z",
-    "scrapedAt": "2025-04-23T05:46:55.983Z",
-    "lastChecked": "2025-04-23T05:46:55.983Z",
-    "summary": "1. The report analyzes the regulatory climate for crypto assets, advocating for outcome-based policy, safe harbors, clear guidance, and a flexible token taxonomy, emphasizing investor protection and innovation.\n\nRelevance: Understanding regulatory frameworks is crucial for Kaia's compliance strategy and its integration with the evolving digital asset landscape.\n",
-    "publicationDate": "2025-04-23T05:46:38.971Z"
+    "timestamp": "2025-04-24T03:12:11.085Z",
+    "scrapedAt": "2025-04-24T03:12:54.492Z",
+    "lastChecked": "2025-04-24T03:12:54.492Z",
+    "summary": "1. Story Protocol aims to build a purpose-built L1 for managing intellectual property in the AI age, offering programmable licensing, on-chain attribution, and automated royalty distribution. It faces adoption, regulatory, and competitive risks.\n\nRelevance: Kaia could leverage Story Protocol's IP infrastructure for managing and monetizing its AI-generated content, ensuring proper attribution and fair compensation.\n",
+    "publicationDate": "2025-04-24T03:12:54.492Z"
   },
   {
     "url": "https://members.delphidigital.io/reports/zkverify-memo-integration-flow-potential-markets-and-token-economics",
     "title": "zkVerify Memo: Integration Flow, Potential Markets, and Token Economics",
     "body": "",
-    "timestamp": "2025-04-23T05:46:38.971Z",
-    "scrapedAt": "2025-04-23T05:47:04.743Z",
-    "lastChecked": "2025-04-23T05:47:04.743Z",
-    "summary": "zkVerify is a specialized L1 for ZKP verification, aiming to simplify development and capture the growing market for at-scale verification in private DeFi, scalability, and proof of humanity applications. It will launch a governance token in 2025.\n\nRelevance: ZKPs enhance privacy, scalability, and interoperability, potentially improving Kaia's functionality and user experience.\n",
-    "publicationDate": "2025-04-23T05:46:38.971Z"
+    "timestamp": "2025-04-24T03:12:11.085Z",
+    "scrapedAt": "2025-04-24T03:12:46.354Z",
+    "lastChecked": "2025-04-24T03:12:46.354Z",
+    "summary": "1. zkVerify aims to be a specialized, modular L1 for ZKP verification, simplifying developer workflows and targeting private DeFi, scaling, and proof of humanity applications. It offers forkless architecture and cost-effective verification.\n\nRelevance: ZKPs are a fundamental component of Kaia's privacy and scalability goals, and zkVerify could offer efficient verification solutions.\n",
+    "publicationDate": "2025-04-24T03:12:46.354Z"
   },
   {
-    "url": "https://members.delphidigital.io/reports/story-protocol-does-ip-need-a-chain",
-    "title": "Story Protocol: Does IP Need a Chain?",
+    "url": "https://members.delphidigital.io/reports/policy-formulation-survival-guide-for-security-status",
+    "title": "Policy Formulation Survival Guide for Security Status",
     "body": "",
-    "timestamp": "2025-04-23T05:46:38.971Z",
-    "scrapedAt": "2025-04-23T05:47:12.957Z",
-    "lastChecked": "2025-04-23T05:47:12.957Z",
-    "summary": "Story Protocol aims to revolutionize IP management for the AI era with a custom L1, enabling programmable licensing, on-chain attribution, and automated royalty splits. It tackles complexities like AI-generated content and aims to bridge legal standards with crypto.\n\nRelevance: Could inform the development of Kaia's IP management and content distribution capabilities, potentially leveraging blockchain for enhanced attribution and licensing.\n",
-    "publicationDate": "2025-04-23T05:46:38.971Z"
+    "timestamp": "2025-04-24T03:12:11.085Z",
+    "scrapedAt": "2025-04-24T03:12:35.988Z",
+    "lastChecked": "2025-04-24T03:12:35.988Z",
+    "summary": "1.  The report explores how the evolving role of tokenholders in DAOs, from speculators to potential insiders, could impact their legal/regulatory standing, potentially classifying tokens as securities.\n\nRelevance: Kaia's governance and tokenomics design must consider these legal implications.\n",
+    "publicationDate": "2025-04-24T03:12:35.988Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/fuel-os-engineered-playgrounds-for-next-generation-of-apps",
+    "title": "Fuel Network: Engineered Playground For The Next Generation Of Apps",
+    "body": "",
+    "timestamp": "2025-04-24T03:12:11.085Z",
+    "scrapedAt": "2025-04-24T03:12:27.410Z",
+    "lastChecked": "2025-04-24T03:12:27.410Z",
+    "summary": "Fuel is a Rollup OS (FuelOS) and FuelVM designed to improve blockchain performance, scalability, and flexibility, enabling innovative app-layer use cases.\n\nRelevance: Fuel's focus on high-performance rollups and application-specific design aligns with Kaia's goals for efficient and scalable blockchain solutions.\n",
+    "publicationDate": "2025-04-24T03:12:27.410Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/the-path-to-defis-etf-moment-the-rise-of-morpho-curators-and-mullets",
+    "title": "The Path to DeFi's ETF Moment: The Rise of Morpho, Curators, and Mullets",
+    "body": "",
+    "timestamp": "2025-04-24T03:12:11.085Z",
+    "scrapedAt": "2025-04-24T03:12:19.538Z",
+    "lastChecked": "2025-04-24T03:12:19.538Z",
+    "summary": "1. DeFi is poised for an \"ETF moment\" with vaults and curators offering accessible, yield-bearing financial products, potentially integrating with CeFi. Morpho, with its modular design, is a key platform enabling this evolution.\n\nRelevance: Kaia can leverage the insights around modular lending and curated vault strategies for enhanced yield generation and risk management.\n",
+    "publicationDate": "2025-04-24T03:12:19.538Z"
+  },
+  {
+    "url": "https://members.delphidigital.io/reports/suis-q1-wrapped-bitcoinfi-mev-and-scaling",
+    "title": "Sui's Q1 Wrapped: BitcoinFi, MEV, and Scaling",
+    "body": "",
+    "timestamp": "2025-04-24T03:12:11.085Z",
+    "scrapedAt": "2025-04-24T03:12:11.086Z",
+    "lastChecked": "2025-04-24T03:12:11.086Z",
+    "summary": "1. Sui's Q1 saw infrastructure upgrades like Mysticeti v2 and Pilotfish for scaling, alongside ecosystem growth in BTCfi, DeFi protocols, and the launch of Walrus, a decentralized storage network.\n\nRelevance: Understanding Sui's advancements in scaling and MEV, along with its object-based architecture, offers insights applicable to Kaia's design and potential interoperability.\n",
+    "publicationDate": "2025-04-24T03:12:11.086Z"
   },
   {
     "url": "https://members.delphidigital.io/reports/celestias-roadmap-tia-time-or-is-da-a-commodity",

@@ -79,9 +79,6 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
     // console.log('Page metrics:', JSON.stringify(metrics, null, 2));
     logger.debug('Page metrics:', { metrics }); // Log metrics object at debug level
     
-    // Take a screenshot of the current state
-    // await page.screenshot({ path: 'current-page-state.png', fullPage: true });
-    
     // Extract links from the current page
     const linksData = await page.evaluate((stopUrl) => {
       const reportLinks = document.querySelectorAll('a[href*="/reports/"]');
@@ -118,11 +115,6 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
     }, lastVisitedUrl); // Pass lastVisitedUrl into evaluate
 
     // Log debug information (optional)
-    // console.log('\nDebug Information:', JSON.stringify(linksData.debug, null, 2));
-
-    // Save the current page content for verification (optional)
-    // const content = await page.content();
-    // await fs.writeFile('current-page.html', content);
 
     // Prepare links (add other fields if needed by later processing)
     const now = new Date().toISOString();
@@ -156,18 +148,6 @@ async function checkForNewReports(page, url, lastVisitedUrl) {
   } catch (error) {
     // console.error('Error in checkForNewReports:', error);
     logger.error(`Error in checkForNewReports: ${error.message}`, { stack: error.stack });
-    // Save error state
-    try {
-      const errorContent = await page.content();
-      const errorStatePath = `error_check_reports_${Date.now()}.html`;
-      await fs.writeFile(errorStatePath, errorContent);
-      // await page.screenshot({ path: 'error-state.png', fullPage: true });
-      // logger.info('Error state saved to error-state.html and error-state.png');
-       logger.info(`Error state HTML saved to ${errorStatePath}`);
-    } catch (debugError) {
-      // console.error('Failed to save error state:', debugError);
-      logger.error(`Failed to save error state HTML: ${debugError.message}`);
-    }
     throw error;
   }
 }
@@ -298,15 +278,6 @@ async function fetchReportContent(page, url) {
   } catch (error) {
     // console.error(`[${timestamp}] ERROR: Error fetching content for ${url}: ${error.message}`);
     logger.error(`Error fetching content for ${url}: ${error.message}`, { stack: error.stack });
-    // Optionally save error page source
-    try {
-        const errorContent = await page.content();
-        const errorStatePath = `error_fetch_content_${url.split('/').pop()}_${Date.now()}.html`;
-        await fs.writeFile(errorStatePath, errorContent);
-        logger.info(`Saved error page HTML to ${errorStatePath}`);
-    } catch (debugError) {
-        logger.error(`Failed to save error page HTML: ${debugError.message}`);
-    }
     return "Error fetching content."; // Return specific error string
   }
 }
