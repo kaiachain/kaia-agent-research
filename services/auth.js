@@ -28,48 +28,133 @@ async function login(page, email, password, cookiesFile) {
     logger.info('Waiting for login form elements (email/password fields)...');
     const emailSelector = 'input[type="email"], input[name*="user"], #email';
     const passwordSelector = 'input[type="password"], input[name*="pass"], #password';
-    await page.waitForSelector(`${emailSelector}, ${passwordSelector}`, { timeout: 30000 });
-    logger.debug('Login form elements found.');
+    
+    try {
+      // First check if elements already exist without waiting
+      const elementsExist = await page.evaluate((emailSel, passSel) => {
+        return !!(document.querySelector(emailSel) || document.querySelector(passSel));
+      }, emailSelector, passwordSelector);
+      
+      if (!elementsExist) {
+        // Wait with increased timeout if elements don't exist yet
+        await page.waitForSelector(`${emailSelector}, ${passwordSelector}`, { timeout: 60000 });
+      }
+      logger.debug('Login form elements found.');
+    } catch (selectorError) {
+      // If still failing, try a more generic approach
+      logger.warn(`Selector timeout: ${selectorError.message}. Trying alternative approach...`);
+      // Try a more generic selector as fallback
+      await page.waitForSelector('input', { timeout: 30000 });
+      logger.debug('Found generic input element, will attempt to identify login fields.');
+    }
 
     // Enter credentials
     // console.log('Entering credentials...');
     logger.info('Entering credentials...');
-    await page.evaluate((email, password, emailSel, passSel) => {
-      const emailInput = document.querySelector(emailSel);
-      const passwordInput = document.querySelector(passSel);
+    try {
+      // First try with specific selectors
+      const specificSelectorResult = await page.evaluate((email, password, emailSel, passSel) => {
+        const emailInput = document.querySelector(emailSel);
+        const passwordInput = document.querySelector(passSel);
+        let success = { email: false, password: false };
 
-      if (emailInput) {
-        emailInput.value = email;
-        emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-      } else {
-         console.warn('Could not find email input field using selector:', emailSel); // Keep console for evaluate
-      }
+        if (emailInput) {
+          emailInput.value = email;
+          emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+          success.email = true;
+        }
 
-      if (passwordInput) {
-        passwordInput.value = password;
-        passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-      } else {
-         console.warn('Could not find password input field using selector:', passSel); // Keep console for evaluate
+        if (passwordInput) {
+          passwordInput.value = password;
+          passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+          success.password = true;
+        }
+
+        return success;
+      }, email, password, emailSelector, passwordSelector);
+
+      // If specific selectors failed, try a more generic approach
+      if (!specificSelectorResult.email || !specificSelectorResult.password) {
+        logger.warn(`Could not fill all form fields with specific selectors. Email: ${specificSelectorResult.email}, Password: ${specificSelectorResult.password}`);
+        
+        // Try a more generic approach to find form fields
+        await page.evaluate((email, password, emailSuccess, passwordSuccess) => {
+          // Get all input fields
+          const inputs = Array.from(document.querySelectorAll('input'));
+          
+          // Try to identify email/username field
+          if (!emailSuccess) {
+            const emailField = inputs.find(input => {
+              const type = (input.type || '').toLowerCase();
+              const name = (input.name || '').toLowerCase();
+              const id = (input.id || '').toLowerCase();
+              const placeholder = (input.placeholder || '').toLowerCase();
+              
+              return type === 'email' || 
+                    name.includes('email') || name.includes('user') || 
+                    id.includes('email') || id.includes('user') ||
+                    placeholder.includes('email') || placeholder.includes('user');
+            });
+            
+            if (emailField) {
+              emailField.value = email;
+              emailField.dispatchEvent(new Event('input', { bubbles: true }));
+              console.log('Found email field using generic search');
+            }
+          }
+          
+          // Try to identify password field
+          if (!passwordSuccess) {
+            const passwordField = inputs.find(input => {
+              const type = (input.type || '').toLowerCase();
+              const name = (input.name || '').toLowerCase();
+              const id = (input.id || '').toLowerCase();
+              const placeholder = (input.placeholder || '').toLowerCase();
+              
+              return type === 'password' || 
+                    name.includes('pass') || 
+                    id.includes('pass') ||
+                    placeholder.includes('password');
+            });
+            
+            if (passwordField) {
+              passwordField.value = password;
+              passwordField.dispatchEvent(new Event('input', { bubbles: true }));
+              console.log('Found password field using generic search');
+            }
+          }
+        }, email, password, specificSelectorResult.email, specificSelectorResult.password);
       }
-    }, email, password, emailSelector, passwordSelector);
-    logger.debug('Credentials entered.');
+      
+      logger.debug('Credentials entered.');
+    } catch (error) {
+      logger.error(`Error entering credentials: ${error.message}`);
+      throw error;
+    }
 
     // Submit login form
     // console.log('Looking for submit button...');
     logger.info('Looking for login/submit button...');
-    const formSubmitted = await page.evaluate(() => {
-      // Try different button selectors
-      const buttonSelectors = [
-        'button[type="submit"]',
-        'input[type="submit"]',
-        'button[class*="submit" i],',
-        'button[class*="login" i],',
-        'button[id*="submit" i],',
-        'button[id*="login" i],',
-        'button:not([type])' // Generic button as fallback
-      ];
+    
+    // Expand button selectors for better coverage
+    const buttonSelectors = [
+      'button[type="submit"]',
+      'input[type="submit"]',
+      'button[class*="submit" i]',
+      'button[class*="login" i]',
+      'button[id*="submit" i]',
+      'button[id*="login" i]',
+      'button',
+      'input[type="button"]',
+      'a[class*="login" i]',
+      'a[class*="submit" i]',
+      'a[href*="login" i]',
+      '.login-button',
+      '.submit-button'
+    ];
 
-      for (const selector of buttonSelectors) {
+    const formSubmitted = await page.evaluate((selectors) => {
+      for (const selector of selectors) {
         const buttons = Array.from(document.querySelectorAll(selector));
         const loginButton = buttons.find(button => {
           const text = (button.textContent || button.value || '').toLowerCase();
@@ -101,7 +186,7 @@ async function login(page, email, password, cookiesFile) {
       }
        console.warn('Could not find a suitable login button.'); // Keep console for evaluate
       return false;
-    });
+    }, buttonSelectors);
 
     if (!formSubmitted) {
       logger.error('Could not find or click login button.');
@@ -113,12 +198,37 @@ async function login(page, email, password, cookiesFile) {
     // console.log('Waiting for auth response...');
     logger.info('Waiting for navigation or authentication response...');
     try {
-        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 45000 });
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
         logger.info('Navigation occurred after login attempt.');
     } catch (navError) {
         logger.warn(`Navigation did not complete after login attempt within timeout: ${navError.message}. Checking current state.`);
-        // Even if navigation times out, the login might have succeeded via AJAX.
-        // We will proceed to verification.
+        // Even if navigation times out, the login might have succeeded via AJAX
+        
+        // Try to detect if we're logged in despite navigation timeout
+        const pageState = await page.evaluate(() => {
+            // Check if we have any error messages visible on the page
+            const errorElements = Array.from(document.querySelectorAll('.error, .alert, .notification, .message'))
+                .filter(el => el.offsetParent !== null && (el.textContent || '').toLowerCase().includes('error'));
+            
+            // Check if we have any elements that would indicate we're already logged in
+            const loggedInIndicators = !!document.querySelector('.dashboard, .logged-in, .user-profile, .account');
+            
+            return {
+                hasErrors: errorElements.length > 0,
+                errorMessages: errorElements.map(el => el.textContent.trim()),
+                appearsLoggedIn: loggedInIndicators
+            };
+        });
+        
+        if (pageState.hasErrors) {
+            logger.warn(`Form errors detected: ${pageState.errorMessages.join(', ')}`);
+        }
+        
+        if (pageState.appearsLoggedIn) {
+            logger.info('Page appears to be in logged-in state despite navigation timeout');
+        }
+        
+        // We will proceed to verification regardless
     }
 
     // Verify login success by checking the target page (e.g., reports page)
