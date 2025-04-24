@@ -14,6 +14,8 @@ after-login.png
 article-page.png
 cookie-login-check.png
 *.html
+data/screenshots/
+data/backups/
 
 # Dependencies
 node_modules/

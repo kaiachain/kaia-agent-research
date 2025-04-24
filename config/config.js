@@ -19,7 +19,6 @@ const config = {
   CACHE_FILE: 'data/processed_reports_cache.json',
   CACHE_EXPIRY_DAYS: 7, // Default expiry days for cache entries
   VISITED_LINKS_FILE: 'data/visited_links.json',
-  UNSENT_REPORTS_FILE: 'data/unsent_reports.json',
   // HISTORY_FILE: 'data/slack_message_history.json',
   RATE_LIMIT_DELAY_MS: 1000, // Delay between requests to avoid rate limiting
   

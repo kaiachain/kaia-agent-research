@@ -42,7 +42,6 @@ delphi/
 │   ├── config/               # Configuration
 │   │   └── config.js         # App configuration
 │   ├── data/                 # Data files
-│   │   ├── backups/          # Backup directory
 │   │   ├── delphi_cookies.json  # Stored cookies
 │   │   ├── processed_reports_cache.json  # Processed reports
 │   │   └── visited_links.json # Links that have been visited
@@ -122,7 +121,6 @@ Optional configuration:
 COOKIES_FILE=src/data/delphi_cookies.json
 CACHE_FILE=src/data/processed_reports_cache.json
 VISITED_LINKS_FILE=src/data/visited_links.json
-BACKUPS_DIR=src/data/backups
 
 # Optional: Check interval in milliseconds (default: 24 hours)
 CHECK_INTERVAL=86400000
@@ -196,7 +194,6 @@ Common issues and solutions:
 1. **Login Issues**:
    - Check your Delphi credentials in `.env`
    - Delete `src/data/delphi_cookies.json` to force a fresh login
-   - Check the debug screenshots in the root directory
 
 2. **Slack Issues**:
    - Verify your Slack token and channel ID
@@ -275,7 +272,6 @@ Common issues and solutions:
 1. **Login Issues**:
    - Check your Delphi credentials in `.env`
    - Delete `src/data/delphi_cookies.json` to force a fresh login
-   - Check the debug screenshots in the root directory
 
 2. **Slack Issues**:
    - Verify your Slack token and channel ID

@@ -146,14 +146,6 @@ async function login(page, email, password, cookiesFile) {
   } catch (error) {
     // console.error('Error during login:', error);
     logger.error(`Error during login process: ${error.message}`, { stack: error.stack });
-    // Try to capture screenshot on error
-    try {
-        const screenshotPath = `error_login_${Date.now()}.png`;
-        await page.screenshot({ path: screenshotPath, fullPage: true });
-        logger.info(`Screenshot saved to ${screenshotPath} due to login error.`);
-    } catch (screenshotError) {
-        logger.error(`Failed to take screenshot on login error: ${screenshotError.message}`);
-    }
     return false;
   }
 }

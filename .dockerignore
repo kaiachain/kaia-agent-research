@@ -22,6 +22,7 @@ delphi_cookies.json
 # Screenshots and HTML debug files
 *.png
 *.html
+data/screenshots/
 
 # Docker files themselves
 Dockerfile
@@ -35,6 +36,7 @@ docker-compose.yml
 
 # Backup files
 backups/
+data/backups/
 *.backup
 
 # Large JSON data files (these will be mounted as volumes)
