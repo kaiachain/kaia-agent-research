@@ -1,5 +1,5 @@
 {
-  "name": "delphi-scraper",
+  "name": "kaia-agent-research",
   "version": "1.0.0",
   "description": "A tool for scraping, summarizing, and processing Delphi Digital reports",
   "main": "scripts/summarize.js",
