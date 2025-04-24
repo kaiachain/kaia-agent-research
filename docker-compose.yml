@@ -1,10 +1,10 @@
 services:
   # Main service
-  delphi-scraper:
+  kaia-agent-research:
     build:
       context: .
-      dockerfile: Dockerfile.rebuild-lock
-    container_name: delphi-scraper
+      dockerfile: Dockerfile
+    container_name: kaia-agent-research
     restart: unless-stopped
     volumes:
       - ./data:/app/data
@@ -15,7 +15,9 @@ services:
       - TZ=UTC
       - NODE_ENV=production
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--no-first-run,--no-zygote,--single-process
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--no-first-run,--no-zygote,--single-process,--disable-extensions,--disable-background-networking,--disable-background-timer-throttling,--disable-backgrounding-occluded-windows,--disable-breakpad,--disable-component-extensions-with-background-pages,--disable-features=TranslateUI,BlinkGenPropertyTrees,IsolateOrigins,site-per-process,BackForwardCache,Translate
+      - DEFAULT_NAVIGATION_TIMEOUT=120000
+      - DEFAULT_TIMEOUT=90000
     healthcheck:
       test: ["CMD", "node", "scripts/check-delphi.js", "--health-check"]
       interval: 30s
