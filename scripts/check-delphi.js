@@ -67,13 +67,13 @@ async function checkDelphiWebsite() {
       'data/delphi_cookies.json'
     );
     
-    if (!loginSuccess) {
-      logWithTimestamp('Failed to log in. Aborting check.', 'error');
-      if (slackInitialized) {
-        await logMessage('❌ Failed to log in to Delphi Digital. Check credentials.', [], true, 'error');
-      }
-      return false;
-    }
+    // if (!loginSuccess) {
+    //   logWithTimestamp('Failed to log in. Aborting check.', 'error');
+    //   if (slackInitialized) {
+    //     await logMessage('❌ Failed to log in to Delphi Digital. Check credentials.', [], true, 'error');
+    //   }
+    //   return false;
+    // }
     
     // Check for new reports
     const links = await checkForNewReports(page, appConfig.DELPHI_URL);

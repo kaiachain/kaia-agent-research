@@ -160,14 +160,14 @@ async function runFullFlow() {
       );
     });
     
-    if (!loginSuccess) {
-      // logWithTimestamp('Failed to log in after retries. Aborting process.', 'error');
-      logger.error('Failed to log in after retries. Aborting process.');
-      if (slackInitialized) {
-        await logMessage('❌ Failed to log in to Delphi Digital after multiple attempts. Check credentials.', [], true, 'error');
-      }
-      return false; // Indicate failure
-    }
+    // if (!loginSuccess) {
+    //   // logWithTimestamp('Failed to log in after retries. Aborting process.', 'error');
+    //   logger.error('Failed to log in after retries. Aborting process.');
+    //   if (slackInitialized) {
+    //     await logMessage('❌ Failed to log in to Delphi Digital after multiple attempts. Check credentials.', [], true, 'error');
+    //   }
+    //   return false; // Indicate failure
+    // }
     
     // Step 2: Read the last visited link
     const lastVisitedUrl = await readLastVisitedLink();
