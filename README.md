@@ -72,8 +72,8 @@ delphi/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/avdheshcharjan/delphi-scraper.git
-   cd delphi-scraper
+   git clone https://github.com/kaiachain/kaia-agent-research.git
+   cd kaia-agent-research
    ```
 
 2. **Install dependencies**:

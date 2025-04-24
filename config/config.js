@@ -34,7 +34,8 @@ const config = {
   
   // Slack settings
   SLACK_CONFIG: {
-    channelId: '' // Default empty
+    channelId: '', // Default empty
+    historyFile: '' // Default empty, won't save history
   },
   SLACK_TOKEN: '', // Default empty
   SLACK_DIGEST_SCHEDULE: '' , // Default empty

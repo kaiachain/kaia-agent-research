@@ -31,7 +31,7 @@ function initializeSlack(token, channelId, historyFilePath = null) {
 // Helper function to load message history
 async function loadMessageHistory() {
   if (!messageHistoryPath) {
-    logger.error('Message history file path is not set. Cannot load history.');
+    // Return empty array instead of error when history not needed
     return [];
   }
   try {
@@ -74,8 +74,8 @@ async function loadMessageHistory() {
 // Helper function to save message history
 async function saveMessageHistory(history) {
    if (!messageHistoryPath) {
-    logger.error('Message history file path is not set. Cannot save history.');
-    return false;
+    // Return success instead of error when history not needed
+    return true;
   }
   try {
     // Ensure directory exists

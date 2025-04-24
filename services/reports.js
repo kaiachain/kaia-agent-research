@@ -267,7 +267,7 @@ async function fetchReportContent(page, url) {
          logger.info(`Extracted publication date: ${reportData.publicationDate}`);
      }
      else {
-          logger.warn(`Could not extract publication date for ${url}`);
+          logger.debug(`Could not extract publication date for ${url}`);
      }
 
     // Return the main body content. The publication date might need separate handling or merging.
