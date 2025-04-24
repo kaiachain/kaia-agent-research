@@ -48,7 +48,7 @@ RUN mkdir -p /app/data && \
 ENV NODE_ENV=production \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--no-first-run,--no-zygote,--single-process,--disable-extensions,--disable-background-networking,--disable-background-timer-throttling,--disable-backgrounding-occluded-windows,--disable-breakpad,--disable-component-extensions-with-background-pages,--disable-features=TranslateUI,BlinkGenPropertyTrees,IsolateOrigins,site-per-process,BackForwardCache,Translate \
+    PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu,--headless=new,--no-first-run,--no-zygote \
     DEFAULT_NAVIGATION_TIMEOUT=120000 \
     DEFAULT_TIMEOUT=90000 \
     TZ=UTC
