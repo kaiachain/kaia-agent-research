@@ -2,8 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
-const { checkDelphiWebsite } = require('./check-delphi');
+const { checkDelphiWebsite, scrapeAndSendDateToSlack } = require('./check-delphi');
 const { sendDailyDigest } = require('./slack-digest');
+const logger = require('./logger');
 
 // Initialize Express app
 const app = express();
@@ -66,7 +67,7 @@ app.post('/slack/command', verifySlackRequest, async (req, res) => {
     try {
       await checkDelphiWebsite();
     } catch (error) {
-      console.error('Error running Delphi check:', error);
+      logger.error('Error running Delphi check:', error);
     }
   } else if (command === '/delphi-digest') {
     // Acknowledge the command immediately
@@ -79,7 +80,28 @@ app.post('/slack/command', verifySlackRequest, async (req, res) => {
     try {
       await sendDailyDigest();
     } catch (error) {
-      console.error('Error generating digest:', error);
+      logger.error('Error generating digest:', error);
+    }
+  } else if (command === '/extract-date') {
+    // Check if URL was provided
+    if (!text || !text.trim().startsWith('http')) {
+      return res.status(200).send({
+        response_type: 'ephemeral',
+        text: 'Please provide a valid URL. Example: `/extract-date https://example.com/article`'
+      });
+    }
+
+    // Acknowledge the command immediately
+    res.status(200).send({
+      response_type: 'in_channel',
+      text: `Extracting published date from ${text.trim()}...`
+    });
+
+    // Extract the date
+    try {
+      await scrapeAndSendDateToSlack(text.trim());
+    } catch (error) {
+      logger.error('Error extracting date:', error);
     }
   } else {
     res.status(200).send({

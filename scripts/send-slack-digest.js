@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { config, loadConfigFromEnv } = require('../config/config');
 const { initializeSlack, sendSlackMessage } = require('../services/slack');
+const { ensureJsonFileExists } = require('../utils/file-utils');
 const logger = require('./logger'); // Import the shared logger
 
 // --- Configuration ---
@@ -23,6 +24,9 @@ const DIGEST_HOURS = appConfig.SLACK_CONFIG.digestLookbackHours || 24; // Use co
  * @returns {Promise<Array<object>>}
  */
 async function loadReports(filePath) {
+    // Ensure the file exists before trying to read it
+    await ensureJsonFileExists(filePath, []);
+    
     try {
         const data = await fs.readFile(filePath, 'utf8');
         const reports = JSON.parse(data);
@@ -33,6 +37,7 @@ async function loadReports(filePath) {
         return reports;
     } catch (error) {
         if (error.code === 'ENOENT') {
+            // This shouldn't happen anymore since we ensure the file exists
             logger.warn(`'${filePath}' not found. No reports to process for digest.`);
         } else if (error instanceof SyntaxError) {
             logger.error(`Error decoding JSON from '${filePath}': ${error.message}`);
@@ -193,11 +198,16 @@ function formatDigestMessage(reports, lookbackHours) {
         if (report.publicationDate) {
             try {
                 const pubDateDt = new Date(report.publicationDate);
-                 if (!isNaN(pubDateDt)) {
-                    pubDateStr = pubDateDt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                 }
+                if (!isNaN(pubDateDt)) {
+                    pubDateStr = pubDateDt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                } else {
+                    // If date parsing fails, use the raw string
+                    pubDateStr = report.publicationDate;
+                }
             } catch (e) {
-                 logger.warn(`Could not parse publicationDate '${report.publicationDate}' for report ${report.url}`);
+                logger.warn(`Could not parse publicationDate '${report.publicationDate}' for report ${report.url}`);
+                // Use the raw string as fallback
+                pubDateStr = report.publicationDate;
             }
         }
 

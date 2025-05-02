@@ -4,6 +4,8 @@ const { WebClient } = require('@slack/web-api');
 const path = require('path');
 const cron = require('node-cron'); // Import node-cron
 const { config, loadConfigFromEnv } = require('../config/config');
+const { ensureJsonFileExists } = require('../utils/file-utils');
+const logger = require('./logger'); // Import the shared logger
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
@@ -22,6 +24,27 @@ function formatDate(date) {
     });
 }
 
+// Format publication date if available
+function formatPublishedDate(dateStr) {
+    if (!dateStr) return "Unknown date";
+    
+    try {
+        const date = new Date(dateStr);
+        if (!isNaN(date)) {
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+        // If date parsing fails, return the original string
+        return dateStr;
+    } catch (e) {
+        console.error(`Error parsing date: ${dateStr}`, e);
+        return dateStr; // Return the original string on error
+    }
+}
+
 // Main function to generate and send digest
 async function sendDailyDigest() {
     try {
@@ -29,15 +52,21 @@ async function sendDailyDigest() {
         
         // Read the visited_links.json file
         const visitedLinksPath = path.resolve(__dirname, '..', 'data/visited_links.json');
+        
+        // Ensure the file exists before trying to read it
+        await ensureJsonFileExists(visitedLinksPath, []);
+        
         let reports = [];
         try {
             const jsonData = JSON.parse(await fs.readFile(visitedLinksPath, 'utf8'));
              // Assuming jsonData is an object where keys are URLs/IDs and values are report objects
-            reports = Object.values(jsonData);
+            reports = Array.isArray(jsonData) ? jsonData : Object.values(jsonData);
         } catch (readError) {
              if (readError.code === 'ENOENT') {
+                // This shouldn't happen anymore since we ensure the file exists
                 console.warn(`Digest source file not found: ${visitedLinksPath}. No digest will be sent.`);
              } else {
+                console.error(`Error reading digest source file: ${readError.message}`);
                 throw readError; // Re-throw other errors
              }
              reports = []; // Ensure reports is an array even if file doesn't exist
@@ -101,9 +130,7 @@ async function sendDailyDigest() {
         // Add each report to the digest
         for (const report of recentReports) {
             // Format publication date if available
-            const publishDate = report.publicationDate 
-                ? new Date(report.publicationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : "Unknown date";
+            const publishDate = formatPublishedDate(report.publicationDate);
             
             // Create blocks for this report
             digestBlocks.push(
@@ -111,7 +138,7 @@ async function sendDailyDigest() {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": `*<${report.url}|${report.title}>*\n_${publishDate}_`
+                        "text": `*<${report.url}|${report.title}>*\n_Published: ${publishDate}_`
                     }
                 }
             );

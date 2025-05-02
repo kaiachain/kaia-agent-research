@@ -1,12 +1,22 @@
 [
   {
-    "url": "https://members.delphidigital.io/reports/example-report",
-    "title": "Example Report Title",
+    "url": "https://example.com/reports/sample-report-1",
+    "title": "Sample Report 1",
     "body": "",
-    "timestamp": "2025-01-01T00:00:00.000Z",
-    "scrapedAt": "2025-01-01T00:00:00.000Z",
-    "lastChecked": "2025-01-01T00:00:00.000Z",
-    "summary": "**Summary:**\n\nThe report explores Bitcoin's potential as a world reserve currency and DeFi market updates, with a focus on L1 trends.\n\n**Relevance:**\n\nUnderstanding crypto market dynamics and DeFi evolution informs Kaia's data analysis and blockchain integration strategies.\n",
-    "publicationDate": "2021-09-17 19:17:46"
+    "timestamp": "2023-01-01T00:00:00.000Z",
+    "scrapedAt": "2023-01-01T00:00:00.000Z",
+    "lastChecked": "2023-01-01T00:00:00.000Z",
+    "summary": "This is a sample report summary.",
+    "publicationDate": "2023-01-01T00:00:00.000Z"
+  },
+  {
+    "url": "https://example.com/reports/sample-report-2",
+    "title": "Sample Report 2",
+    "body": "",
+    "timestamp": "2023-01-02T00:00:00.000Z",
+    "scrapedAt": "2023-01-02T00:00:00.000Z",
+    "lastChecked": "2023-01-02T00:00:00.000Z",
+    "summary": "This is another sample report summary.",
+    "publicationDate": "2023-01-02T00:00:00.000Z"
   }
 ]

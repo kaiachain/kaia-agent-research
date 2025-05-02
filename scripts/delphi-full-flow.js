@@ -13,15 +13,17 @@ logger.debug(`SLACK_CHANNEL_ID loaded: ${!!process.env.SLACK_CHANNEL_ID}`);
 const fs = require('fs').promises;
 const path = require('path');
 const { spawn } = require('child_process');
+const cron = require('node-cron');
 
 // Import services and utilities
 const { launchBrowser, setupPage } = require('../browser/browser');
 const { login } = require('../services/auth');
-const { checkForNewReports, fetchReportContent } = require('../services/reports');
+const { checkForNewReports, fetchReportContent, extractPublishedDate } = require('../services/reports');
 const { initializeSlack, sendSlackMessage, formatReportForSlack, logMessage } = require('../services/slack');
 const { initializeGemini, getSummaryFromGemini } = require('../services/ai');
 const { config, loadConfigFromEnv } = require('../config/config');
 const { readLastVisitedLink, writeLastVisitedLink } = require('../utils/link-tracker');
+const { ensureJsonFileExists } = require('../utils/file-utils');
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
@@ -48,6 +50,9 @@ const VISITED_LINKS_FILE_PATH = 'data/visited_links.json'; // Define constant fo
  * @param {string} filePath - Path to the visited_links.json file.
  */
 async function updateVisitedLinksFile(newlyProcessedReports, filePath) {
+  // Ensure the visited_links.json file exists before trying to read it
+  await ensureJsonFileExists(filePath, []);
+  
   let existingReports = [];
   try {
     // Attempt to read existing reports
@@ -60,6 +65,7 @@ async function updateVisitedLinksFile(newlyProcessedReports, filePath) {
     }
   } catch (error) {
     if (error.code === 'ENOENT') {
+      // This shouldn't happen anymore since we ensure the file exists
       // logWithTimestamp(`${filePath} not found. Creating a new file.`);
       logger.info(`${filePath} not found. Creating a new file.`);
       // File doesn't exist, which is fine, we'll create it.
@@ -207,6 +213,21 @@ async function runFullFlow() {
           if (reportContent !== "Error fetching content." && typeof reportContent === 'string') { // Check it's a string
             logger.info(`Fetched content successfully for ${report.url}. Length: ${reportContent.length}`);
 
+            // Extract the published date from the page
+            let publishedDate = null;
+            try {
+              // Navigate to the report URL again to ensure we have the right page
+              await page.goto(report.url, { waitUntil: 'networkidle0', timeout: 30000 });
+              publishedDate = await extractPublishedDate(page);
+              if (publishedDate) {
+                logger.info(`Extracted published date for ${report.title}: ${publishedDate}`);
+              } else {
+                logger.warn(`Could not extract published date for ${report.title}`);
+              }
+            } catch (dateError) {
+              logger.error(`Error extracting published date: ${dateError.message}`);
+            }
+
             // Summarize using Gemini (using the fetched body content)
             if (geminiInitialized) {
               // Pass the fetched body content (temporaryBody) to Gemini
@@ -234,7 +255,7 @@ async function runFullFlow() {
               scrapedAt: now,
               lastChecked: now,
               summary: summary, // Use the generated summary or error string
-              publicationDate: report.publicationDate || now // Preserve original or use 'now'
+              publicationDate: publishedDate || report.publicationDate || now // Use extracted date, or preserve original, or use 'now'
             };
 
              // Send to Slack if summary was successful
@@ -408,12 +429,20 @@ async function scheduledExecution() {
   // Run the initial flow
   await runFullFlow();
   
-  // Schedule regular runs
-  setInterval(async () => {
-    await runFullFlow();
-  }, appConfig.CHECK_INTERVAL);
+  // Get cron schedule from config or use default (daily at midnight)
+  const cronSchedule = appConfig.CRON_SCHEDULE || '0 0 * * *';
   
-  logger.info(`Delphi flow scheduled. Next execution in ${appConfig.CHECK_INTERVAL / (60 * 60 * 1000)} hours`);
+  // Schedule regular checks using cron
+  if (cron.validate(cronSchedule)) {
+    cron.schedule(cronSchedule, async () => {
+      await runFullFlow();
+    });
+    
+    logger.info(`Delphi flow scheduled with cron pattern: ${cronSchedule}`);
+  } else {
+    logger.error(`Invalid cron pattern: ${cronSchedule}. Check your configuration.`);
+    process.exit(1);
+  }
 }
 
 // Main execution

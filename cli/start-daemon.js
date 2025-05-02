@@ -3,11 +3,15 @@ require('dotenv').config();
 const { spawn } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
+const { config, loadConfigFromEnv } = require('../config/config');
 
 const PID_FILE = path.join(process.cwd(), 'delphi-checker.pid');
 
 async function startDaemon() {
   try {
+    // Load configuration
+    const appConfig = loadConfigFromEnv();
+    
     // Check if already running
     try {
       const pidData = await fs.readFile(PID_FILE, 'utf8');
@@ -38,7 +42,7 @@ async function startDaemon() {
     await fs.writeFile(PID_FILE, child.pid.toString());
     
     console.log(`Delphi checker daemon started with PID ${child.pid}`);
-    console.log(`The daemon will check for new reports every ${config.CHECK_INTERVAL / (60 * 60 * 1000)} hours`);
+    console.log(`The daemon will check for new reports with cron schedule: ${appConfig.CRON_SCHEDULE}`);
     console.log('You can stop it using: node cli/stop-daemon.js');
     
     return true;

@@ -1,15 +1,21 @@
 require('dotenv').config();
 const fs = require('fs').promises;
 const path = require('path');
-
-// Import services
+const { config, loadConfigFromEnv } = require('../config/config'); // Importing config
+const { launchBrowser, setupPage } = require('../browser/browser');
+const { login } = require('../services/auth');
+const { checkForNewReports } = require('../services/reports');
 const { initializeGemini, getSummaryFromGemini } = require('../services/ai');
-const { initializeSlack, sendSlackMessage, formatReportForSlack, logMessage, logWithTimestamp } = require('../services/slack');
+const { initializeSlack, sendSlackMessage, formatReportForSlack, logMessage } = require('../services/slack');
 const { loadCache, updateCache, createContentHash, needsProcessing } = require('../utils/cache');
 const { extractContent } = require('../utils/content-extractor');
+const { ensureJsonFileExists } = require('../utils/file-utils');
+const logger = require('./logger'); // Import logger
 
-// Import config
-const { config, loadConfigFromEnv } = require('../config/config');
+// Constants
+const VISITED_LINKS_PATH = 'data/visited_links.json';
+
+// Load configuration
 const appConfig = loadConfigFromEnv();
 
 // Initialize services
@@ -22,9 +28,6 @@ const forceReprocessUrls = [];
 let forceReprocessCount = 0;
 let forceSummaries = false;
 let runDigest = false;
-let startDaemon = false;
-let stopDaemon = false;
-let checkStatus = false;
 
 // Process command line arguments
 for (let i = 0; i < args.length; i++) {
@@ -39,12 +42,6 @@ for (let i = 0; i < args.length; i++) {
         forceSummaries = true;
     } else if (args[i] === '--digest') {
         runDigest = true;
-    } else if (args[i] === '--start-daemon') {
-        startDaemon = true;
-    } else if (args[i] === '--stop-daemon') {
-        stopDaemon = true;
-    } else if (args[i] === '--status') {
-        checkStatus = true;
     }
 }
 
@@ -56,10 +53,25 @@ function formatDate(date) {
     });
 }
 
+// Function to load visited links
+async function loadVisitedLinks() {
+  try {
+    // Ensure the visited_links.json file exists
+    await ensureJsonFileExists(VISITED_LINKS_PATH, []);
+    
+    // Read the file
+    const data = await fs.readFile(VISITED_LINKS_PATH, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    logger.error(`Error loading visited links: ${error.message}`);
+    return []; // Return empty array on error
+  }
+}
+
 // Main function to process all links
 async function processAllLinks() {
     try {
-        logWithTimestamp('Starting to process reports...');
+        logger.info('Starting to process reports...');
 
         // Send notification that processing has started (status message)
         await logMessage('🔄 Starting to process Delphi Digital reports...', [], false);
@@ -73,12 +85,12 @@ async function processAllLinks() {
         // In production, this function would call the full processing flow
         // It will be called by the delphi-full-flow.js script
 
-        logWithTimestamp('Finished processing reports');
+        logger.info('Finished processing reports');
         await logMessage('✅ Finished processing Delphi Digital reports', [], true);
 
         return true;
     } catch (error) {
-        logWithTimestamp(`Error processing links: ${error.message}`, 'error');
+        logger.error(`Error processing links: ${error.message}`);
         return false;
     }
 }
@@ -86,7 +98,7 @@ async function processAllLinks() {
 // Main function to send daily digest
 async function sendDailyDigest() {
     try {
-        logWithTimestamp('Preparing daily digest of Delphi Digital reports...');
+        logger.info('Preparing daily digest of Delphi Digital reports...');
 
         // Send notification that digest preparation has started (status message)
         await logMessage('📋 Preparing Delphi Digital daily digest...', [], false);
@@ -94,10 +106,10 @@ async function sendDailyDigest() {
         // In production, this function would prepare and send a real digest
         // It will be called by the slack-digest.js script
 
-        logWithTimestamp('Daily digest sent successfully');
+        logger.info('Daily digest sent successfully');
         return true;
     } catch (error) {
-        logWithTimestamp(`Error sending daily digest: ${error.message}`, 'error');
+        logger.error(`Error sending daily digest: ${error.message}`);
         return false;
     }
 }
@@ -105,22 +117,13 @@ async function sendDailyDigest() {
 // Main execution
 async function main() {
     try {
-        if (startDaemon) {
-            const { startDaemon } = require('../cli/start-daemon');
-            await startDaemon();
-        } else if (stopDaemon) {
-            const { stopDaemon } = require('../cli/stop-daemon');
-            await stopDaemon();
-        } else if (checkStatus) {
-            const { checkStatus } = require('../cli/status-daemon');
-            await checkStatus();
-        } else if (runDigest) {
+        if (runDigest) {
             await sendDailyDigest();
         } else {
             await processAllLinks();
         }
     } catch (error) {
-        logWithTimestamp(`Error in main execution: ${error.message}`, 'error');
+        logger.error(`Error in main execution: ${error.message}`);
     }
 }
 
@@ -134,4 +137,17 @@ module.exports = {
     processAllLinks,
     sendDailyDigest,
     main
-}; 
+};
+
+// Function to summarize reports
+async function summarizeReports(forceLatest = false, maxReports = 5) {
+  // Ensure the visited_links.json file exists
+  await ensureJsonFileExists(VISITED_LINKS_PATH, []);
+  
+  // Initialize AI
+  const geminiInitialized = initializeGemini(appConfig.GEMINI_API_KEY);
+  if (!geminiInitialized) {
+    logger.error('Failed to initialize Gemini. Check your GEMINI_API_KEY.');
+    return false;
+  }
+} 

@@ -248,82 +248,68 @@ async function getSlackMessage(ts) {
 
 // Function to format a report for Slack
 function formatReportForSlack(report) {
-  // Split the summary into main summary and Kaia relevance
-  let mainSummary = report.summary || "Summary not available.";
-  let kaiaRelevance = '';
-
-  // Assume Kaia relevance might start with "**Kaia Relevance:**" or similar, split by newline
-  const summaryLines = mainSummary.split('\n');
-  const kaiaIndex = summaryLines.findIndex(line => line.toLowerCase().includes('kaia relevance'));
-
-  if (kaiaIndex !== -1) {
-      mainSummary = summaryLines.slice(0, kaiaIndex).join('\n').trim();
-      kaiaRelevance = summaryLines.slice(kaiaIndex).join('\n').trim();
+  if (!report || !report.url || !report.title) {
+    return null; // Invalid report data
   }
 
-  // const publishDate = report.publicationDate ? new Date(report.publicationDate).toLocaleDateString() : 'N/A';
-  // Use a more reliable date formatting
-  let publishDateStr = 'N/A';
-  try {
-    if (report.publicationDate) {
-       publishDateStr = new Date(report.publicationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  // Format publication date if available
+  let pubDateStr = "Unknown date";
+  if (report.publicationDate) {
+    try {
+      const pubDate = new Date(report.publicationDate);
+      if (!isNaN(pubDate)) {
+        pubDateStr = pubDate.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } else {
+        // If date parsing fails, use the raw string
+        pubDateStr = report.publicationDate;
+      }
+    } catch (e) {
+      console.error(`Error parsing publication date: ${e.message}`);
+      pubDateStr = report.publicationDate; // Fallback to using raw string
     }
-  } catch (e) {
-    logger.warn(`Could not parse publicationDate: ${report.publicationDate}`);
   }
 
+  // Format the summary for Slack (ensure it's not too long)
+  let summaryText = report.summary || 'No summary available';
+  if (summaryText.length > 2900) {
+    summaryText = summaryText.substring(0, 2900) + "... (truncated)";
+  }
+
+  // Create Slack message blocks
   const blocks = [
     {
       "type": "header",
       "text": {
         "type": "plain_text",
-        "text": report.title || "Untitled Report",
-         "emoji": true
+        "text": `${report.title}`,
+        "emoji": true
       }
     },
     {
-      "type": "context",
-      "elements": [
+      "type": "section",
+      "fields": [
         {
           "type": "mrkdwn",
-          "text": `*Published:* ${publishDateStr} | <${report.url}|View Report>`
+          "text": `*URL:*\n<${report.url}|${report.url.substring(0, 70)}${report.url.length > 70 ? '...' : ''}>`
+        },
+        {
+          "type": "mrkdwn",
+          "text": `*Published:*\n${pubDateStr}`
         }
       ]
     },
     {
-      "type": "divider"
-    },
-    {
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": `*Summary:*\n${mainSummary}`
+        "text": `*Summary:*\n${summaryText}`
       }
-    },
+    }
   ];
-
-  if (kaiaRelevance) {
-    blocks.push({
-      "type": "section",
-      "text": {
-        "type": "mrkdwn",
-        "text": `*Relevance:*\n${kaiaRelevance}`
-      }
-    });
-  }
-
-  // Add timestamp if available
-  if (report.timestamp) {
-      blocks.push({
-          "type": "context",
-          "elements": [
-              {
-                  "type": "mrkdwn",
-                  "text": `_Scraped: ${new Date(report.scrapedAt || report.timestamp).toLocaleString()}_`
-              }
-          ]
-      });
-  }
 
   return blocks;
 }

@@ -113,6 +113,14 @@ SLACK_CHANNEL_ID=your_slack_channel_id
 # or "now" to send immediately based on reports since the last successful 'now' run.
 # If not set or "now", the digest must be triggered manually or via the main flow.
 SLACK_DIGEST_SCHEDULE="now"
+
+# Cron schedule for checking new reports (default: "0 0 * * *" for daily at midnight)
+# Uses standard cron syntax: minute hour day month weekday
+# Examples:
+# "0 */12 * * *" - Every 12 hours
+# "0 9 * * 1-5" - Every weekday at 9 AM
+# "0 0,12 * * *" - Every day at midnight and noon
+CRON_SCHEDULE="0 0 * * *"
 ```
 
 Optional configuration:
@@ -121,9 +129,6 @@ Optional configuration:
 COOKIES_FILE=src/data/delphi_cookies.json
 CACHE_FILE=src/data/processed_reports_cache.json
 VISITED_LINKS_FILE=src/data/visited_links.json
-
-# Optional: Check interval in milliseconds (default: 24 hours)
-CHECK_INTERVAL=86400000
 ```
 
 ## Usage
@@ -136,7 +141,7 @@ The recommended way to use this tool is with the full flow process:
 # Run once
 npm run delphi:run
 
-# Run in daemon mode (checks every 24 hours)
+# Run in daemon mode (checks according to the CRON_SCHEDULE)
 npm run delphi:daemon
 
 # Stop the daemon
@@ -239,6 +244,28 @@ This tool can send notifications to a configured Slack channel:
   - **`SLACK_DIGEST_SCHEDULE="now"`**: When the digest script runs (either manually via `npm run digest` or automatically if integrated into the main flow's end), it will send summaries for reports processed *since the last time the "now" digest was successfully run*. It tracks this using the `data/digest_state.json` file.
   - **`SLACK_DIGEST_SCHEDULE="<cron_schedule>"` (e.g., `"0 9 * * *"` for 9 AM UTC)**: The script uses a fixed lookback period (currently hardcoded as 24 hours in `send-slack-digest.js`) to gather reports when run. You would typically trigger this script using an external scheduler like `cron` based on the desired schedule. *Note: The current setup doesn't automatically schedule based on the cron string; it only uses it to adjust the lookback logic if provided.*
   - **Not Set / Empty**: If the variable is not set, running the digest script defaults to the fixed lookback period (like the cron schedule case) and relies on manual triggering.
+
+## Automation with Cron
+
+The application uses node-cron for scheduling regular checks for new reports:
+
+1. **Internal Cron Scheduling**:
+   - The daemon uses node-cron to schedule checks according to the `CRON_SCHEDULE` environment variable
+   - The default schedule is daily at midnight (`0 0 * * *`)
+   - You can customize this by setting `CRON_SCHEDULE` in your .env file
+
+2. **Cron Syntax**:
+   - Standard cron format: `minute hour day month weekday`
+   - Examples:
+     - `0 */12 * * *` - Every 12 hours
+     - `0 9 * * 1-5` - Every weekday at 9 AM
+     - `0 0,12 * * *` - Every day at midnight and noon
+
+3. **Manual Scheduling**:
+   - You can also use your system's cron to schedule runs if you prefer not using the daemon
+   - Example: `0 9 * * * cd /path/to/app && npm run delphi:run`
+
+The scheduling system ensures regular checks without requiring manual intervention while providing flexibility to customize the timing according to your needs.
 
 ## Docker Setup
 

@@ -1,42 +1,32 @@
 [
   {
-    "url": "https://members.delphidigital.io/reports/policy-formulation-survival-guide-for-security-status",
-    "title": "Policy Formulation Survival Guide for Security Status",
+    "url": "https://members.delphidigital.io/reports/elixir_-the-future-of-order-book-liquidity-part-ii-deusd",
+    "title": "The Future of Order-Book Liquidity (Part II - deUSD)",
     "body": "",
-    "timestamp": "2025-04-24T05:42:08.361Z",
-    "scrapedAt": "2025-04-24T05:42:34.957Z",
-    "lastChecked": "2025-04-24T05:42:34.957Z",
-    "summary": "1. The report questions how DAOs and tokenholder roles evolve, and if this could change their legal/regulatory standing, potentially leading to SEC scrutiny of tokens as securities.\n\nRelevance: Kaia's governance model and token utility need to navigate evolving regulatory landscapes.\n",
-    "publicationDate": "2025-04-24T05:42:34.957Z"
+    "timestamp": "2025-05-02T02:44:04.242Z",
+    "scrapedAt": "2025-05-02T02:44:04.242Z",
+    "lastChecked": "2025-05-02T02:44:04.242Z",
+    "summary": "1. Elixir introduces deUSD, a synthetic dollar backed by stETH and short ETH perpetual futures, aiming to be preferred collateral within its ecosystem, with an over-collateralized insurance fund to mitigate risks.\n\nRelevance: This research provides insight into synthetic dollar design, particularly for collateralized assets within a DEX ecosystem, potentially informing Kaia's future implementations.\n",
+    "publicationDate": "MAY 02, 2025"
   },
   {
-    "url": "https://members.delphidigital.io/reports/fuel-os-engineered-playgrounds-for-next-generation-of-apps",
-    "title": "Fuel Network: Engineered Playground For The Next Generation Of Apps",
+    "url": "https://members.delphidigital.io/reports/the-fat-app-thesis-an-inflection-point-in-value-accrual",
+    "title": "The Fat App Thesis: An Inflection Point in Value Accrual",
     "body": "",
-    "timestamp": "2025-04-24T05:42:08.361Z",
-    "scrapedAt": "2025-04-24T05:42:26.564Z",
-    "lastChecked": "2025-04-24T05:42:26.564Z",
-    "summary": "Fuel is a Rollup OS and VM designed for high-performance, scalable blockchain applications, featuring a register-based VM, UTXO model, and Sway language. It aims to address current blockchain limitations with innovative financial, DePIN, AI, gaming, and RWA applications.\n\nRelevance: Fuel's architecture and focus on performance align with Kaia's goals for efficient and scalable blockchain solutions.\n",
-    "publicationDate": "2025-04-24T05:42:26.564Z"
+    "timestamp": "2025-05-02T02:44:04.242Z",
+    "scrapedAt": "2025-05-02T02:44:19.467Z",
+    "lastChecked": "2025-05-02T02:44:19.467Z",
+    "summary": "1. The Fat App Thesis argues that value will shift from protocol layers (like Ethereum) to applications due to app-specific sequencing, MEV capture, and vertical integration, potentially leading to a decline in L1 token valuations.\n\nRelevance: Understanding this shift is crucial for Kaia as it navigates the evolving landscape, focusing on app-centric design and value accrual mechanisms.\n",
+    "publicationDate": "AccrualAPR 29, 2025"
   },
   {
-    "url": "https://members.delphidigital.io/reports/the-path-to-defis-etf-moment-the-rise-of-morpho-curators-and-mullets",
-    "title": "The Path to DeFi's ETF Moment: The Rise of Morpho, Curators, and Mullets",
+    "url": "https://members.delphidigital.io/reports/101440",
+    "title": "Omar Shakeeb & Oleg Ivanov: Signals from the Secondary Market",
     "body": "",
-    "timestamp": "2025-04-24T05:42:08.361Z",
-    "scrapedAt": "2025-04-24T05:42:18.436Z",
-    "lastChecked": "2025-04-24T05:42:18.436Z",
-    "summary": "1. DeFi is poised for growth via \"DeFi mullets,\" where CeFi/fintech integrate DeFi backends, with vaults and curators facilitating this. Morpho's role in enabling programmable capital allocation and curator businesses is critical.\n\nRelevance: Kaia can leverage these trends by exploring integrations with curated DeFi strategies and Morpho-like infrastructure for enhanced yield and user experience.\n",
-    "publicationDate": "2025-04-24T05:42:18.436Z"
-  },
-  {
-    "url": "https://members.delphidigital.io/reports/suis-q1-wrapped-bitcoinfi-mev-and-scaling",
-    "title": "Sui's Q1 Wrapped: BitcoinFi, MEV, and Scaling",
-    "body": "",
-    "timestamp": "2025-04-24T05:42:08.361Z",
-    "scrapedAt": "2025-04-24T05:42:08.361Z",
-    "lastChecked": "2025-04-24T05:42:08.361Z",
-    "summary": "1. Sui's Q1 saw infrastructure upgrades like Mysticeti v2 and Pilotfish for scaling, Move VM 2.0 enhancements, and ecosystem growth in BTCfi and DeFi, including Walrus's mainnet launch.\n\nRelevance: Sui's advancements in scaling and MEV optimization could inform Kaia's design choices for performance and fairness in its decentralized environment.\n",
-    "publicationDate": "2025-04-24T05:42:08.361Z"
+    "timestamp": "2025-05-02T02:44:04.242Z",
+    "scrapedAt": "2025-05-02T02:44:34.878Z",
+    "lastChecked": "2025-05-02T02:44:34.878Z",
+    "summary": "1. Delphi Digital and SecondLane collaborated, featuring Yan Liberman, Oleg Ivanov, and Omar-Shakeeb, to discuss secondary crypto market misconceptions, logistics, valuations, and regulations. It aims to educate the industry as part of a research series.\n\nRelevance: Understanding secondary market dynamics can inform Kaia's trading strategies and platform design.\n",
+    "publicationDate": "MarketAPR 29, 2025"
   }
 ]

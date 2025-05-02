@@ -10,7 +10,7 @@ const config = {
   DELPHI_PASSWORD: '', // Default empty
   
   // Timing
-  CHECK_INTERVAL: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+  CRON_SCHEDULE: '0 0 * * *', // Default: daily at midnight
   
   // File paths - Hardcoded
   COOKIES_FILE: 'data/delphi_cookies.json',
@@ -66,8 +66,8 @@ function loadConfigFromEnv() {
   config.DELPHI_EMAIL = process.env.DELPHI_EMAIL || config.DELPHI_EMAIL;
   config.DELPHI_PASSWORD = process.env.DELPHI_PASSWORD || config.DELPHI_PASSWORD;
 
-  const interval = parseInt(process.env.CHECK_INTERVAL, 10);
-  if (!isNaN(interval)) config.CHECK_INTERVAL = interval;
+  // Load CRON_SCHEDULE from environment
+  config.CRON_SCHEDULE = process.env.CRON_SCHEDULE || config.CRON_SCHEDULE;
 
   const cacheDays = parseInt(process.env.CACHE_EXPIRY_DAYS, 10);
   if (!isNaN(cacheDays)) config.CACHE_EXPIRY_DAYS = cacheDays;

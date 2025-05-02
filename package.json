@@ -25,7 +25,9 @@
     "delphi:fix-links": "node scripts/fix-visited-links.js",
     "delphi:sort-links": "node scripts/sort-visited-links.js",
     "slack:send-unsent": "node scripts/send-unsent-reports.js",
-    "slack:dry-run": "node scripts/send-unsent-reports.js --dry-run"
+    "slack:dry-run": "node scripts/send-unsent-reports.js --dry-run",
+    "scrape-date": "node scripts/check-delphi.js",
+    "test:dates": "node scripts/test-date-extraction.js"
   },
   "keywords": [
     "delphi",

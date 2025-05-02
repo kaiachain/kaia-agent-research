@@ -391,8 +391,8 @@ async function setupPage(browser) {
   await page.setRequestInterception(true);
   page.on('request', (request) => {
     const resourceType = request.resourceType();
-    // Block unnecessary resources that might cause timeouts
-    if (['image', 'media', 'font', 'stylesheet'].includes(resourceType)) {
+    // Block unnecessary resources but allow CSS to prevent preload errors
+    if (['image', 'media', 'font'].includes(resourceType)) {
       request.abort();
     } else {
       request.continue();
