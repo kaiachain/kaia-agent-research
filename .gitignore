@@ -1,8 +1,8 @@
 # Environment variables
 .env
 
-# Credentials and cookies
-delphi_cookies.json
+# # Credentials and cookies
+# delphi_cookies.json
 
 # Cache files
 processed_reports_cache.json
