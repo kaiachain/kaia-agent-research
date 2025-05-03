@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const fetch = require('node-fetch');
+const axios = require('axios');
 const logger = require('../scripts/logger'); // Import the logger
 const { ensureJsonFileExists } = require('./file-utils'); // Import the file utility
 const { config, loadConfigFromEnv } = require('../config/config');
@@ -55,11 +55,8 @@ async function readLastVisitedLink() {
   try {
     // First try to fetch init_visited_link.json from GitHub
     try {
-      const response = await fetch(INIT_VISITED_LINK_URL);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const initJson = await response.json();
+      const response = await axios.get(INIT_VISITED_LINK_URL);
+      const initJson = response.data;
       if (initJson.lastVisitedUrl) {
         logger.info(`Using URL from GitHub init_visited_link.json: ${initJson.lastVisitedUrl}`);
         return initJson.lastVisitedUrl;

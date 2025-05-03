@@ -34,7 +34,7 @@ const geminiInitialized = initializeGemini(appConfig.GEMINI_API_KEY);
 const slackInitialized = initializeSlack(appConfig.SLACK_TOKEN, appConfig.SLACK_CONFIG.channelId);
 
 // Initialize Slack Digest Scheduling (will only schedule if SLACK_DIGEST_SCHEDULE is set in .env and not 'now')
-require('./slack-digest.js');
+// require('./slack-digest.js');
 
 // PID file path
 const PID_FILE = path.join(process.cwd(), 'delphi-checker.pid');
@@ -176,6 +176,8 @@ async function runFullFlow() {
     const newReports = await retryOperation(async () => {
       return await checkForNewReports(page, appConfig.DELPHI_REPORTS_URL, lastVisitedUrl);
     });
+    
+    newReports.reverse();
     
     // Step 4: Process each new report
     if (newReports && newReports.length > 0) {
@@ -390,8 +392,8 @@ async function scheduledExecution() {
   // Run the initial flow
   await runFullFlow();
   
-  // Get cron schedule from config or use default (daily at midnight)
-  const cronSchedule = appConfig.CRON_SCHEDULE || '0 0 * * *';
+  // Get cron schedule from config or use default (daily at 9 AM)
+  const cronSchedule = appConfig.CRON_SCHEDULE || '0 9 * * *';
   
   // Schedule regular checks using cron
   if (cron.validate(cronSchedule)) {

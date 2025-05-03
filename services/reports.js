@@ -223,26 +223,36 @@ async function fetchReportContent(page, url) {
 
         // Attempt to find publication date
        let publicationDate = null;
-       const dateSelectors = [
-           'time[datetime]', // Standard time element
-           'span[class*="date" i]', // Class containing "date"
-           'div[class*="publish" i]', // Class containing "publish"
-           'p[class*="meta" i]' // Meta paragraph
-       ];
-       for (const selector of dateSelectors) {
-           const dateElement = document.querySelector(selector);
-           if (dateElement) {
-               publicationDate = dateElement.getAttribute('datetime') || dateElement.textContent;
-               if (publicationDate) break;
-           }
-       }
+      //  const dateSelectors = [
+      //      'time[datetime]', // Standard time element
+      //      'span[class*="date" i]', // Class containing "date"
+      //      'div[class*="publish" i]', // Class containing "publish"
+      //      'p[class*="meta" i]' // Meta paragraph
+      //  ];
+      //  for (const selector of dateSelectors) {
+      //      const dateElement = document.querySelector(selector);
+      //      if (dateElement) {
+      //          publicationDate = dateElement.getAttribute('datetime') || dateElement.textContent;
+      //          if (publicationDate) break;
+      //      }
+      //  }
 
-        // Clean up extracted date string if necessary
-       if (publicationDate) {
-           publicationDate = publicationDate.trim().replace(/^Published on /i, '');
-           // Attempt to parse into a standard format (optional, can be done later)
-           // try { publicationDate = new Date(publicationDate).toISOString(); } catch(e) { /* ignore parse error */ }
-       }
+      //   // Clean up extracted date string if necessary
+      //  if (publicationDate) {
+      //      publicationDate = publicationDate.trim().replace(/^Published on /i, '');
+      //      // Attempt to parse into a standard format (optional, can be done later)
+      //      // try { publicationDate = new Date(publicationDate).toISOString(); } catch(e) { /* ignore parse error */ }
+      //  }
+
+      const regex = /\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s\d{2},\s\d{4}\b/;
+      const match = bodyText.match(regex);
+
+      if (match) {
+        // console.log(match[0]);  // Output: MAY 03, 2025
+        publicationDate = match[0];
+      } else {
+        console.log("No publicationDate found.");
+      }
 
        return { body: bodyText, publicationDate };
     });
@@ -261,6 +271,7 @@ async function fetchReportContent(page, url) {
         }
       return "Error fetching content."; // Return specific error string
     }
+    debugger;
     // console.log(`[${timestamp}] INFO: Fetched content successfully for ${url}. Length: ${reportData.body.length}`);
     logger.info(`Fetched content successfully for ${url}. Length: ${reportData.body.length}`);
      if (reportData.publicationDate) {
