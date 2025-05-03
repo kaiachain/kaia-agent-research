@@ -4,9 +4,9 @@
   "description": "A tool for scraping, summarizing, and processing Delphi Digital reports",
   "main": "scripts/summarize.js",
   "bin": {
-    "delphi-start": "./bin/delphi-start",
-    "delphi-stop": "./bin/delphi-stop",
-    "delphi-status": "./bin/delphi-status"
+    "delphi-start": "bin/delphi-start",
+    "delphi-stop": "bin/delphi-stop",
+    "delphi-status": "bin/delphi-status"
   },
   "scripts": {
     "start": "node scripts/summarize.js",
@@ -19,7 +19,7 @@
     "check": "node scripts/check-delphi.js",
     "digest": "node scripts/slack-digest.js",
     "webhook": "node scripts/slack-webhook.js",
-    "delphi:run": "node scripts/delphi-full-flow.js && node scripts/send-slack-digest.js",
+    "delphi:run": "node scripts/delphi-full-flow.js",
     "delphi:daemon": "node scripts/delphi-full-flow.js --daemon",
     "delphi:stop": "node cli/stop-daemon.js",
     "delphi:fix-links": "node scripts/fix-visited-links.js",
@@ -47,5 +47,6 @@
     "node-cron": "^3.0.3",
     "puppeteer-core": "^24.6.1",
     "winston": "^3.17.0"
-  }
+  },
+  "devDependencies": {}
 }

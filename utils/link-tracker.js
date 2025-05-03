@@ -1,9 +1,16 @@
 const fs = require('fs').promises;
 const path = require('path');
+const fetch = require('node-fetch');
 const logger = require('../scripts/logger'); // Import the logger
 const { ensureJsonFileExists } = require('./file-utils'); // Import the file utility
+const { config, loadConfigFromEnv } = require('../config/config');
 
+// Load configuration
+const appConfig = loadConfigFromEnv();
+
+// Constants
 const LAST_VISITED_LINK_FILE = path.join(process.cwd(), 'data/last_visited_link.json');
+const INIT_VISITED_LINK_URL = appConfig.INIT_VISITED_LINK_URL;
 
 /**
  * Ensures the last_visited_link.json file exists
@@ -39,22 +46,37 @@ async function ensureLastVisitedLinkFileExists() {
 }
 
 /**
- * Reads the last visited link URL from the JSON file.
- * Creates the file if it doesn't exist.
+ * Reads the last visited link URL from the JSON files.
+ * First fetches init_visited_link.json from GitHub, if that has a URL, uses it.
+ * Otherwise falls back to last_visited_link.json.
  * @returns {Promise<string|null>} The last visited URL or null if not found/error.
  */
 async function readLastVisitedLink() {
   try {
-    // First ensure the file exists
-    await ensureLastVisitedLinkFileExists();
+    // First try to fetch init_visited_link.json from GitHub
+    try {
+      const response = await fetch(INIT_VISITED_LINK_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const initJson = await response.json();
+      if (initJson.lastVisitedUrl) {
+        logger.info(`Using URL from GitHub init_visited_link.json: ${initJson.lastVisitedUrl}`);
+        return initJson.lastVisitedUrl;
+      }
+    } catch (error) {
+      logger.error(`Error fetching init_visited_link.json from GitHub: ${error.message}`);
+      // If fetch fails, continue to last_visited_link.json
+    }
     
-    // Read the file
+    // If GitHub fetch fails or has no URL, check last_visited_link.json
+    await ensureLastVisitedLinkFileExists();
     const data = await fs.readFile(LAST_VISITED_LINK_FILE, 'utf8');
     const jsonData = JSON.parse(data);
     logger.info(`Read last visited URL: ${jsonData.lastVisitedUrl || 'None'}`);
     return jsonData.lastVisitedUrl || null;
   } catch (error) {
-    logger.error(`Error reading last_visited_link.json: ${error.message}`);
+    logger.error(`Error reading last visited link files: ${error.message}`);
     return null; // Return null on errors
   }
 }

@@ -121,6 +121,10 @@ SLACK_DIGEST_SCHEDULE="now"
 # "0 9 * * 1-5" - Every weekday at 9 AM
 # "0 0,12 * * *" - Every day at midnight and noon
 CRON_SCHEDULE="0 0 * * *"
+
+# Optional: URL for the initial visited link file
+# Default: "https://raw.githubusercontent.com/kaiachain/kaia-agent-research/main/data/init_visited_link.json"
+INIT_VISITED_LINK_URL="your_custom_url"
 ```
 
 Optional configuration:
