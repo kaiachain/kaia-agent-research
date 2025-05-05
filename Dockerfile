@@ -56,9 +56,5 @@ ENV NODE_ENV=production \
 # Switch to non-root user
 USER node
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node scripts/check-delphi.js --health-check || exit 1
-
 # Default command (can be overridden by docker-compose)
 CMD ["npm", "run", "delphi:run"] 
