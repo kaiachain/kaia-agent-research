@@ -3,7 +3,7 @@ const path = require('path');
 const { config, loadConfigFromEnv } = require('../config/config');
 const { initializeSlack, sendSlackMessage } = require('./slack');
 const { ensureJsonFileExists } = require('../utils/file-utils');
-const logger = require('../scripts/logger');
+const logger = require('../utils/logger');
 
 // Load configuration
 const appConfig = loadConfigFromEnv();

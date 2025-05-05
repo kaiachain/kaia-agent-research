@@ -33,12 +33,3 @@ docker-compose.yml
 .DS_Store
 *.swp
 *.swo
-
-# Backup files
-backups/
-data/backups/
-*.backup
-
-# Large JSON data files (these will be mounted as volumes)
-visited_links.json
-processed_reports_cache.json 

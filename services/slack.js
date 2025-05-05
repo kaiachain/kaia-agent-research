@@ -2,7 +2,7 @@ const { WebClient } = require("@slack/web-api");
 const fs = require("fs").promises;
 const path = require("path");
 const config = require("../config/config").loadConfigFromEnv(); // Import config
-const logger = require("../scripts/logger"); // Import the shared logger
+const logger = require("../utils/logger"); // Import the shared logger
 
 // Initialize Slack client when module is loaded
 let slack = null;
@@ -109,45 +109,6 @@ async function saveMessageHistory(history) {
   }
 }
 
-/**
- * Log a message using the configured logger and optionally send to Slack
- * @param {string} message - The message to log
- * @param {Array} blocks - Slack blocks for formatting (if sending to Slack)
- * @param {boolean} sendToSlack - Whether to send this message to Slack
- * @param {string} level - Log level (info, warn, error, debug)
- */
-async function logMessage(
-  message,
-  blocks = [],
-  sendToSlack = false,
-  level = "info"
-) {
-  // Log using the logger
-  switch (level.toLowerCase()) {
-    case "error":
-      logger.error(message);
-      break;
-    case "warn":
-      logger.warn(message);
-      break;
-    case "debug":
-      logger.debug(message);
-      break;
-    case "info":
-    default:
-      logger.info(message);
-  }
-
-  // Only send to Slack if explicitly requested and Slack is initialized
-  if (sendToSlack && slack && slackChannel) {
-    // Don't return the result of sendSlackMessage directly
-    // Let the function complete its logging independently
-    await sendSlackMessage(message, blocks);
-  }
-  // We don't need to return true/false based on slack sending here
-  // The primary purpose is logging, Slack is secondary.
-}
-
 // Function to send message to Slack
 async function sendSlackMessage(message, blocks = []) {
   try {
@@ -188,103 +149,6 @@ async function sendSlackMessage(message, blocks = []) {
       stack: error.stack,
     });
     return null; // Return null on error
-  }
-}
-
-// Function to get message history
-async function getMessageHistory(limit = 100) {
-  try {
-    const history = await loadMessageHistory();
-    return history.slice(-limit); // Return the most recent messages up to the limit
-  } catch (error) {
-    // logWithTimestamp('Error getting message history: ' + error.message, 'error');
-    logger.error(`Error getting message history: ${error.message}`, {
-      stack: error.stack,
-    });
-    return [];
-  }
-}
-
-// Function to get recently sent messages about a specific report URL
-async function getMessagesForReport(reportUrl, limit = 10) {
-  try {
-    const history = await loadMessageHistory();
-
-    // Filter messages containing the report URL
-    const reportMessages = history.filter((msg) => {
-      // Check in text
-      if (msg.text && msg.text.includes(reportUrl)) {
-        return true;
-      }
-
-      // Check in blocks
-      if (msg.blocks && Array.isArray(msg.blocks)) {
-        return msg.blocks.some((block) => {
-          if (block.type === "section" && block.text && block.text.text) {
-            return block.text.text.includes(reportUrl);
-          }
-          if (block.fields && Array.isArray(block.fields)) {
-            return block.fields.some(
-              (field) => field.text && field.text.includes(reportUrl)
-            );
-          }
-          // Add check for context block elements
-          if (
-            block.type === "context" &&
-            block.elements &&
-            Array.isArray(block.elements)
-          ) {
-            return block.elements.some(
-              (el) =>
-                el.type === "mrkdwn" && el.text && el.text.includes(reportUrl)
-            );
-          }
-          return false;
-        });
-      }
-
-      return false;
-    });
-
-    return reportMessages.slice(-limit); // Return the most recent messages up to the limit
-  } catch (error) {
-    // logWithTimestamp('Error getting messages for report: ' + error.message, 'error');
-    logger.error(
-      `Error getting messages for report ${reportUrl}: ${error.message}`,
-      { stack: error.stack }
-    );
-    return [];
-  }
-}
-
-// Function to retrieve a specific message from Slack
-async function getSlackMessage(ts) {
-  try {
-    if (!slack || !slackChannel) {
-      // logWithTimestamp('Slack not initialized, cannot retrieve message', 'warn');
-      logger.warn("Slack not initialized, cannot retrieve message");
-      return null;
-    }
-
-    const result = await slack.conversations.history({
-      channel: slackChannel,
-      latest: ts,
-      inclusive: true,
-      limit: 1,
-    });
-
-    if (result.messages && result.messages.length > 0) {
-      return result.messages[0];
-    }
-
-    return null;
-  } catch (error) {
-    // logWithTimestamp('Error retrieving message from Slack: ' + error.message, 'error');
-    logger.error(
-      `Error retrieving message ${ts} from Slack: ${error.message}`,
-      { slackError: error?.data, stack: error.stack }
-    );
-    return null;
   }
 }
 
@@ -362,11 +226,5 @@ function formatReportForSlack(report) {
 module.exports = {
   initializeSlack,
   sendSlackMessage,
-  logMessage,
-  getMessageHistory,
-  getMessagesForReport,
-  getSlackMessage,
   formatReportForSlack,
-  // logWithTimestamp, // Removed
-  // logError // Removed
 };

@@ -1,9 +1,9 @@
 const fs = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
-const logger = require('../scripts/logger'); // Import the logger
+const logger = require('./logger'); // Import the logger
 const { ensureJsonFileExists } = require('./file-utils'); // Import the file utility
-const { config, loadConfigFromEnv } = require('../config/config');
+const { loadConfigFromEnv } = require('../config/config');
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
