@@ -1,8 +1,8 @@
-const { WebClient } = require('@slack/web-api');
-const fs = require('fs').promises;
-const path = require('path');
-const config = require('../config/config').loadConfigFromEnv(); // Import config
-const logger = require('../scripts/logger'); // Import the shared logger
+const { WebClient } = require("@slack/web-api");
+const fs = require("fs").promises;
+const path = require("path");
+const config = require("../config/config").loadConfigFromEnv(); // Import config
+const logger = require("../utils/logger"); // Import the shared logger
 
 // Initialize Slack client when module is loaded
 let slack = null;
@@ -13,7 +13,9 @@ let messageHistoryPath = null; // Rename for clarity
 function initializeSlack(token, channelId, historyFilePath = null) {
   if (!token || !channelId) {
     // logWithTimestamp('Slack credentials not configured');
-    logger.warn('Slack credentials not configured. Slack notifications disabled.');
+    logger.warn(
+      "Slack credentials not configured. Slack notifications disabled."
+    );
     return false;
   }
 
@@ -35,45 +37,57 @@ async function loadMessageHistory() {
     return [];
   }
   try {
-    const data = await fs.readFile(messageHistoryPath, 'utf8');
+    const data = await fs.readFile(messageHistoryPath, "utf8");
     // Handle empty file case explicitly
     if (!data) {
-        // logWithTimestamp('Message history file is empty. Starting fresh.', 'warn');
-        logger.warn(`Message history file (${messageHistoryPath}) is empty. Starting fresh.`);
-        return [];
+      // logWithTimestamp('Message history file is empty. Starting fresh.', 'warn');
+      logger.warn(
+        `Message history file (${messageHistoryPath}) is empty. Starting fresh.`
+      );
+      return [];
     }
     return JSON.parse(data);
   } catch (error) {
-    if (error.code === 'ENOENT') {
+    if (error.code === "ENOENT") {
       // logWithTimestamp('Message history file not found. Creating it.', 'info');
-      logger.info(`Message history file (${messageHistoryPath}) not found. Creating it.`);
+      logger.info(
+        `Message history file (${messageHistoryPath}) not found. Creating it.`
+      );
       // Ensure directory exists before writing
       try {
-          const dir = path.dirname(messageHistoryPath);
-          await fs.mkdir(dir, { recursive: true });
-          await fs.writeFile(messageHistoryPath, JSON.stringify([], null, 2)); // Create with empty array
-          return [];
+        const dir = path.dirname(messageHistoryPath);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(messageHistoryPath, JSON.stringify([], null, 2)); // Create with empty array
+        return [];
       } catch (createError) {
-          logger.error(`Failed to create message history directory or file at ${messageHistoryPath}: ${createError.message}`, { stack: createError.stack });
-          return []; // Return empty if creation fails
+        logger.error(
+          `Failed to create message history directory or file at ${messageHistoryPath}: ${createError.message}`,
+          { stack: createError.stack }
+        );
+        return []; // Return empty if creation fails
       }
     }
     // Handle JSON parsing errors specifically
     if (error instanceof SyntaxError) {
-         // logWithTimestamp(`Error parsing JSON in message history file: ${error.message}. Treating as empty.`, 'error');
-         logger.error(`Error parsing JSON in message history file (${messageHistoryPath}): ${error.message}. Treating as empty.`);
-         return [];
+      // logWithTimestamp(`Error parsing JSON in message history file: ${error.message}. Treating as empty.`, 'error');
+      logger.error(
+        `Error parsing JSON in message history file (${messageHistoryPath}): ${error.message}. Treating as empty.`
+      );
+      return [];
     }
     // Log other unexpected errors
     // logWithTimestamp('Error loading message history: ' + error.message, 'error');
-    logger.error(`Error loading message history from ${messageHistoryPath}: ${error.message}`, { stack: error.stack });
+    logger.error(
+      `Error loading message history from ${messageHistoryPath}: ${error.message}`,
+      { stack: error.stack }
+    );
     return []; // Return empty array on other errors too
   }
 }
 
 // Helper function to save message history
 async function saveMessageHistory(history) {
-   if (!messageHistoryPath) {
+  if (!messageHistoryPath) {
     // Return success instead of error when history not needed
     return true;
   }
@@ -87,43 +101,12 @@ async function saveMessageHistory(history) {
     return true;
   } catch (error) {
     // logWithTimestamp('Error saving message history: ' + error.message, 'error');
-    logger.error(`Error saving message history to ${messageHistoryPath}: ${error.message}`, { stack: error.stack });
+    logger.error(
+      `Error saving message history to ${messageHistoryPath}: ${error.message}`,
+      { stack: error.stack }
+    );
     return false;
   }
-}
-
-/**
- * Log a message using the configured logger and optionally send to Slack
- * @param {string} message - The message to log
- * @param {Array} blocks - Slack blocks for formatting (if sending to Slack)
- * @param {boolean} sendToSlack - Whether to send this message to Slack
- * @param {string} level - Log level (info, warn, error, debug)
- */
-async function logMessage(message, blocks = [], sendToSlack = false, level = 'info') {
-  // Log using the logger
-  switch(level.toLowerCase()) {
-    case 'error':
-      logger.error(message);
-      break;
-    case 'warn':
-      logger.warn(message);
-      break;
-    case 'debug':
-       logger.debug(message);
-       break;
-    case 'info':
-    default:
-      logger.info(message);
-  }
-
-  // Only send to Slack if explicitly requested and Slack is initialized
-  if (sendToSlack && slack && slackChannel) {
-    // Don't return the result of sendSlackMessage directly
-    // Let the function complete its logging independently
-    await sendSlackMessage(message, blocks);
-  }
-  // We don't need to return true/false based on slack sending here
-  // The primary purpose is logging, Slack is secondary.
 }
 
 // Function to send message to Slack
@@ -131,14 +114,14 @@ async function sendSlackMessage(message, blocks = []) {
   try {
     if (!slack || !slackChannel) {
       // logWithTimestamp('Slack not initialized, skipping notification');
-      logger.warn('Slack not initialized, skipping notification');
+      logger.warn("Slack not initialized, skipping notification");
       return null; // Return null or similar to indicate not sent
     }
 
     const result = await slack.chat.postMessage({
       channel: slackChannel,
       text: message, // Fallback text
-      blocks: blocks.length > 0 ? blocks : undefined // Use blocks if available
+      blocks: blocks.length > 0 ? blocks : undefined, // Use blocks if available
     });
 
     // logWithTimestamp(`Message sent to Slack: ${result.ts}`);
@@ -150,7 +133,7 @@ async function sendSlackMessage(message, blocks = []) {
       messageId: result.ts,
       channel: slackChannel,
       text: message,
-      blocks: blocks.length > 0 ? blocks : undefined
+      blocks: blocks.length > 0 ? blocks : undefined,
     };
 
     // Add to history
@@ -161,88 +144,11 @@ async function sendSlackMessage(message, blocks = []) {
     return result.ts; // Return the timestamp of the sent message
   } catch (error) {
     // logWithTimestamp('Error sending message to Slack: ' + error.message, 'error');
-    logger.error(`Error sending message to Slack: ${error.message}`, { slackError: error?.data, stack: error.stack });
+    logger.error(`Error sending message to Slack: ${error.message}`, {
+      slackError: error?.data,
+      stack: error.stack,
+    });
     return null; // Return null on error
-  }
-}
-
-// Function to get message history
-async function getMessageHistory(limit = 100) {
-  try {
-    const history = await loadMessageHistory();
-    return history.slice(-limit); // Return the most recent messages up to the limit
-  } catch (error) {
-    // logWithTimestamp('Error getting message history: ' + error.message, 'error');
-    logger.error(`Error getting message history: ${error.message}`, { stack: error.stack });
-    return [];
-  }
-}
-
-// Function to get recently sent messages about a specific report URL
-async function getMessagesForReport(reportUrl, limit = 10) {
-  try {
-    const history = await loadMessageHistory();
-
-    // Filter messages containing the report URL
-    const reportMessages = history.filter(msg => {
-      // Check in text
-      if (msg.text && msg.text.includes(reportUrl)) {
-        return true;
-      }
-
-      // Check in blocks
-      if (msg.blocks && Array.isArray(msg.blocks)) {
-        return msg.blocks.some(block => {
-          if (block.type === 'section' && block.text && block.text.text) {
-            return block.text.text.includes(reportUrl);
-          }
-          if (block.fields && Array.isArray(block.fields)) {
-            return block.fields.some(field => field.text && field.text.includes(reportUrl));
-          }
-          // Add check for context block elements
-          if (block.type === 'context' && block.elements && Array.isArray(block.elements)) {
-             return block.elements.some(el => el.type === 'mrkdwn' && el.text && el.text.includes(reportUrl));
-          }
-          return false;
-        });
-      }
-
-      return false;
-    });
-
-    return reportMessages.slice(-limit); // Return the most recent messages up to the limit
-  } catch (error) {
-    // logWithTimestamp('Error getting messages for report: ' + error.message, 'error');
-    logger.error(`Error getting messages for report ${reportUrl}: ${error.message}`, { stack: error.stack });
-    return [];
-  }
-}
-
-// Function to retrieve a specific message from Slack
-async function getSlackMessage(ts) {
-  try {
-    if (!slack || !slackChannel) {
-      // logWithTimestamp('Slack not initialized, cannot retrieve message', 'warn');
-      logger.warn('Slack not initialized, cannot retrieve message');
-      return null;
-    }
-
-    const result = await slack.conversations.history({
-      channel: slackChannel,
-      latest: ts,
-      inclusive: true,
-      limit: 1
-    });
-
-    if (result.messages && result.messages.length > 0) {
-      return result.messages[0];
-    }
-
-    return null;
-  } catch (error) {
-    // logWithTimestamp('Error retrieving message from Slack: ' + error.message, 'error');
-    logger.error(`Error retrieving message ${ts} from Slack: ${error.message}`, { slackError: error?.data, stack: error.stack });
-    return null;
   }
 }
 
@@ -258,10 +164,10 @@ function formatReportForSlack(report) {
     try {
       const pubDate = new Date(report.publicationDate);
       if (!isNaN(pubDate)) {
-        pubDateStr = pubDate.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
+        pubDateStr = pubDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
         });
       } else {
         // If date parsing fails, use the raw string
@@ -274,7 +180,7 @@ function formatReportForSlack(report) {
   }
 
   // Format the summary for Slack (ensure it's not too long)
-  let summaryText = report.summary || 'No summary available';
+  let summaryText = report.summary || "No summary available";
   if (summaryText.length > 2900) {
     summaryText = summaryText.substring(0, 2900) + "... (truncated)";
   }
@@ -282,33 +188,35 @@ function formatReportForSlack(report) {
   // Create Slack message blocks
   const blocks = [
     {
-      "type": "header",
-      "text": {
-        "type": "plain_text",
-        "text": `${report.title}`,
-        "emoji": true
-      }
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `${report.title}`,
+        emoji: true,
+      },
     },
     {
-      "type": "section",
-      "fields": [
+      type: "section",
+      fields: [
         {
-          "type": "mrkdwn",
-          "text": `*URL:*\n<${report.url}|${report.url.substring(0, 70)}${report.url.length > 70 ? '...' : ''}>`
+          type: "mrkdwn",
+          text: `*URL:*\n<${report.url}|${report.url.substring(0, 70)}${
+            report.url.length > 70 ? "..." : ""
+          }>`,
         },
         {
-          "type": "mrkdwn",
-          "text": `*Published:*\n${pubDateStr}`
-        }
-      ]
+          type: "mrkdwn",
+          text: `*Published:*\n${pubDateStr}`,
+        },
+      ],
     },
     {
-      "type": "section",
-      "text": {
-        "type": "mrkdwn",
-        "text": `*Summary:*\n${summaryText}`
-      }
-    }
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*Summary:*\n${summaryText}`,
+      },
+    },
   ];
 
   return blocks;
@@ -318,11 +226,5 @@ function formatReportForSlack(report) {
 module.exports = {
   initializeSlack,
   sendSlackMessage,
-  logMessage,
-  getMessageHistory,
-  getMessagesForReport,
-  getSlackMessage,
   formatReportForSlack,
-  // logWithTimestamp, // Removed
-  // logError // Removed
-}; 
+};

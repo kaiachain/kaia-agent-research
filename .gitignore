@@ -1,36 +1,10 @@
 # Environment variables
 .env
 
-# # Credentials and cookies
-# delphi_cookies.json
-
-# Cache files
-processed_reports_cache.json
-
-# Debug screenshots and HTML
-login-page.png
-login-failed.png
-after-login.png
-article-page.png
-cookie-login-check.png
-*.html
-data/screenshots/
-data/backups/
-
 # Dependencies
 node_modules/
 
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.yarn/
 
 # macOS
 .DS_Store
-
-# Operating System Files
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db 

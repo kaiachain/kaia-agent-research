@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer-core');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
-const logger = require('../scripts/logger');
+const logger = require('../utils/logger');
 
 // Function to save cookies from the browser session
 async function saveCookies(page, cookiesFile) {

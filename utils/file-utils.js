@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const logger = require('../scripts/logger');
+const logger = require('./logger');
 
 /**
  * Ensures that a JSON file exists. If it doesn't exist, creates it with the provided default content.

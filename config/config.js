@@ -6,6 +6,7 @@ const config = {
   DELPHI_URL: 'https://members.delphidigital.io/reports',
   DELPHI_LOGIN_URL: 'https://members.delphidigital.io/login',
   DELPHI_REPORTS_URL: 'https://members.delphidigital.io/reports',
+  INIT_VISITED_LINK_URL: 'https://raw.githubusercontent.com/kaiachain/kaia-agent-research/main/data/init_visited_link.json',
   DELPHI_EMAIL: '', // Default empty
   DELPHI_PASSWORD: '', // Default empty
   
@@ -63,6 +64,7 @@ function loadConfigFromEnv() {
   config.DELPHI_URL = process.env.DELPHI_URL || config.DELPHI_URL;
   config.DELPHI_LOGIN_URL = process.env.DELPHI_LOGIN_URL || config.DELPHI_LOGIN_URL;
   config.DELPHI_REPORTS_URL = process.env.DELPHI_REPORTS_URL || config.DELPHI_REPORTS_URL;
+  config.INIT_VISITED_LINK_URL = process.env.INIT_VISITED_LINK_URL || config.INIT_VISITED_LINK_URL;
   config.DELPHI_EMAIL = process.env.DELPHI_EMAIL || config.DELPHI_EMAIL;
   config.DELPHI_PASSWORD = process.env.DELPHI_PASSWORD || config.DELPHI_PASSWORD;
 

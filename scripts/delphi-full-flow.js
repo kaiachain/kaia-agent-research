@@ -1,122 +1,35 @@
 #!/usr/bin/env node
-require('dotenv').config();
+require("dotenv").config();
 
-const logger = require('./logger'); // Import the configured logger
-
-// --- DEBUG: Check if .env is loaded ---
-// console.log('DEBUG: SLACK_TOKEN loaded:', !!process.env.SLACK_TOKEN);
-// console.log('DEBUG: SLACK_CHANNEL_ID loaded:', !!process.env.SLACK_CHANNEL_ID);
-logger.debug(`SLACK_TOKEN loaded: ${!!process.env.SLACK_TOKEN}`);
-logger.debug(`SLACK_CHANNEL_ID loaded: ${!!process.env.SLACK_CHANNEL_ID}`);
-// --- END DEBUG ---
-
-const fs = require('fs').promises;
-const path = require('path');
-const { spawn } = require('child_process');
-const cron = require('node-cron');
-
-// Import services and utilities
-const { launchBrowser, setupPage } = require('../browser/browser');
-const { login } = require('../services/auth');
-const { checkForNewReports, fetchReportContent, extractPublishedDate } = require('../services/reports');
-const { initializeSlack, sendSlackMessage, formatReportForSlack, logMessage } = require('../services/slack');
-const { initializeGemini, getSummaryFromGemini } = require('../services/ai');
-const { config, loadConfigFromEnv } = require('../config/config');
-const { readLastVisitedLink, writeLastVisitedLink } = require('../utils/link-tracker');
-const { ensureJsonFileExists } = require('../utils/file-utils');
+const logger = require("../utils/logger");
+const fs = require("fs").promises;
+const { launchBrowser, setupPage } = require("../browser/browser");
+const { login } = require("../services/auth");
+const {
+  checkForNewReports,
+  fetchReportContent
+} = require("../services/reports");
+const {
+  initializeSlack,
+  sendSlackMessage,
+  formatReportForSlack,
+} = require("../services/slack");
+const { initializeGemini, getSummaryFromGemini } = require("../services/ai");
+const { loadConfigFromEnv } = require("../config/config");
+const {
+  readLastVisitedLink,
+  writeLastVisitedLink,
+} = require("../utils/link-tracker");
 
 // Load configuration
 const appConfig = loadConfigFromEnv();
 
 // Initialize services
 const geminiInitialized = initializeGemini(appConfig.GEMINI_API_KEY);
-const slackInitialized = initializeSlack(appConfig.SLACK_TOKEN, appConfig.SLACK_CONFIG.channelId);
-
-// Initialize Slack Digest Scheduling (will only schedule if SLACK_DIGEST_SCHEDULE is set in .env and not 'now')
-require('./slack-digest.js');
-
-// PID file path
-const PID_FILE = path.join(process.cwd(), 'delphi-checker.pid');
-
-// Process command line arguments
-const args = process.argv.slice(2);
-const daemon = args.includes('--daemon');
-
-const VISITED_LINKS_FILE_PATH = 'data/visited_links.json'; // Define constant for clarity
-
-/**
- * Reads existing reports, appends new reports, sorts them, and writes back to the file.
- * @param {Array<object>} newlyProcessedReports - Array of report objects processed in this run.
- * @param {string} filePath - Path to the visited_links.json file.
- */
-async function updateVisitedLinksFile(newlyProcessedReports, filePath) {
-  // Ensure the visited_links.json file exists before trying to read it
-  await ensureJsonFileExists(filePath, []);
-  
-  let existingReports = [];
-  try {
-    // Attempt to read existing reports
-    const data = await fs.readFile(filePath, 'utf8');
-    existingReports = JSON.parse(data);
-    if (!Array.isArray(existingReports)) {
-        // logWithTimestamp(`Warning: ${filePath} did not contain a valid JSON array. Starting fresh.`, 'warn');
-        logger.warn(`${filePath} did not contain a valid JSON array. Starting fresh.`);
-        existingReports = [];
-    }
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      // This shouldn't happen anymore since we ensure the file exists
-      // logWithTimestamp(`${filePath} not found. Creating a new file.`);
-      logger.info(`${filePath} not found. Creating a new file.`);
-      // File doesn't exist, which is fine, we'll create it.
-    } else {
-      // Log other errors but proceed with an empty list
-      // logError(`Error reading existing ${filePath}, will overwrite if new reports exist:`, error);
-      logger.error(`Error reading existing ${filePath}, will overwrite if new reports exist: ${error.message}`, { stack: error.stack });
-    }
-    existingReports = []; // Ensure it's an array
-  }
-
-  // Combine existing reports with the newly processed ones
-  const combinedReports = [...existingReports, ...newlyProcessedReports];
-
-  // Optional: Deduplicate based on URL (keeping the newest entry if duplicates exist)
-  const reportMap = new Map();
-  combinedReports.forEach(report => {
-      const existing = reportMap.get(report.url);
-      // Keep the one with the later scrapedAt date, or the new one if dates are equal/missing
-      if (!existing || new Date(report.scrapedAt || 0) >= new Date(existing.scrapedAt || 0)) {
-          reportMap.set(report.url, report);
-      }
-  });
-  const uniqueReports = Array.from(reportMap.values());
-
-
-  // Sort the combined, unique reports by publicationDate (descending)
-  uniqueReports.sort((a, b) => {
-    const dateA = new Date(a.publicationDate || a.scrapedAt || 0);
-    const dateB = new Date(b.publicationDate || b.scrapedAt || 0);
-    return dateB - dateA; // Newest first
-  });
-
-  // Write the combined, sorted reports back to the file
-  try {
-    await fs.writeFile(filePath, JSON.stringify(uniqueReports, null, 2), 'utf8');
-    if (newlyProcessedReports.length > 0) {
-       // logWithTimestamp(`Successfully updated ${filePath} with ${newlyProcessedReports.length} new reports. Total reports: ${uniqueReports.length}.`);
-       logger.info(`Successfully updated ${filePath} with ${newlyProcessedReports.length} new reports. Total reports: ${uniqueReports.length}.`);
-    } else if (existingReports.length !== uniqueReports.length) {
-        // logWithTimestamp(`Successfully updated ${filePath}. No new reports, but file content potentially changed (e.g., sorting/deduplication). Total reports: ${uniqueReports.length}.`);
-        logger.info(`Successfully updated ${filePath}. No new reports, but file content potentially changed (e.g., sorting/deduplication). Total reports: ${uniqueReports.length}.`);
-    } else {
-       // logWithTimestamp(`No updates needed for ${filePath}.`);
-       logger.info(`No updates needed for ${filePath}.`);
-    }
-  } catch (error) {
-    // logError(`Error writing combined reports to ${filePath}:`, error);
-    logger.error(`Error writing combined reports to ${filePath}: ${error.message}`, { stack: error.stack });
-  }
-}
+const slackInitialized = initializeSlack(
+  appConfig.SLACK_TOKEN,
+  appConfig.SLACK_CONFIG.channelId
+);
 
 // Function to retry failed operations
 async function retryOperation(operation, maxRetries = 3, delay = 5000) {
@@ -125,334 +38,153 @@ async function retryOperation(operation, maxRetries = 3, delay = 5000) {
       return await operation();
     } catch (error) {
       if (attempt === maxRetries) throw error;
-      // logWithTimestamp(`Attempt ${attempt} failed, retrying in ${delay/1000} seconds... Error: ${error.message}`, 'warn');
-      logger.warn(`Attempt ${attempt} failed, retrying in ${delay/1000} seconds... Error: ${error.message}`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      logger.warn(
+        `[Retry:${attempt}/${maxRetries}] Retrying in ${delay/1000}s. Error: ${error.message}`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }
 
 // Main function to handle the complete flow
-async function runFullFlow() {
-  // logWithTimestamp(`=== Starting Delphi full flow: ${new Date().toISOString()} ===`);
-  logger.info(`=== Starting Delphi full flow: ${new Date().toISOString()} ===`);
-  
-  if (slackInitialized) {
-    await logMessage('🔍 Starting Delphi Digital processing flow (using last visited link)...', [], false);
-  }
-  
+async function main() {
+  logger.info(`[Flow:1] Starting Delphi full flow at ${new Date().toISOString()}`);
+
   const browser = await launchBrowser();
-  let latestProcessedUrl = null; // Track the URL of the newest report processed in this run
 
   try {
     const page = await setupPage(browser);
-    
+
     // Step 1: Login to Delphi with retry
-    // logWithTimestamp('Attempting to log in...');
-    logger.info('Attempting to log in...');
-    const loginSuccess = await retryOperation(async () => {
-      // Try to load cookies from file
-      await fs.access('data/delphi_cookies.json'); // Use hardcoded path
-      const cookiesString = await fs.readFile('data/delphi_cookies.json', 'utf8'); // Use hardcoded path
+    logger.info("[Auth:2] Initiating Delphi Digital login process");
+    await retryOperation(async () => {
+      await fs.access("data/delphi_cookies.json");
+      const cookiesString = await fs.readFile("data/delphi_cookies.json", "utf8");
       const cookies = JSON.parse(cookiesString);
-      logger.info(`Loaded ${cookies.length} cookies from file`);
-      logger.debug(`Cookie names: ${cookies.map(c => c.name).join(', ')}`); // Log cookie names at debug level
+      logger.info(`[Auth:2.1] Loaded ${cookies.length} cookies from storage`);
+      logger.debug(`[Auth:2.2] Cookie names: ${cookies.map((c) => c.name).join(", ")}`);
       await page.setCookie(...cookies);
       return await login(
-        page, 
-        appConfig.DELPHI_EMAIL, 
-        appConfig.DELPHI_PASSWORD, 
-        'data/delphi_cookies.json'
+        page,
+        appConfig.DELPHI_EMAIL,
+        appConfig.DELPHI_PASSWORD,
+        "data/delphi_cookies.json"
       );
     });
-    
-    // if (!loginSuccess) {
-    //   // logWithTimestamp('Failed to log in after retries. Aborting process.', 'error');
-    //   logger.error('Failed to log in after retries. Aborting process.');
-    //   if (slackInitialized) {
-    //     await logMessage('❌ Failed to log in to Delphi Digital after multiple attempts. Check credentials.', [], true, 'error');
-    //   }
-    //   return false; // Indicate failure
-    // }
-    
+
     // Step 2: Read the last visited link
+    logger.info("[Link:3] Reading last visited link from storage");
     const lastVisitedUrl = await readLastVisitedLink();
-    // logWithTimestamp(`Last visited URL from file: ${lastVisitedUrl || 'None (first run?)'}`);
-    logger.info(`Last visited URL from file: ${lastVisitedUrl || 'None (first run?)'}`);
+    logger.info(`[Link:3.1] Last visited URL: ${lastVisitedUrl || "None (first run)"}`);
 
     // Step 3: Check for new reports since the last visited one
+    logger.info("[Reports:4] Checking for new reports");
     const newReports = await retryOperation(async () => {
-      // Pass lastVisitedUrl to checkForNewReports
-      // checkForNewReports might have its own logging
-      return await checkForNewReports(page, appConfig.DELPHI_REPORTS_URL, lastVisitedUrl);
+      return await checkForNewReports(
+        page,
+        appConfig.DELPHI_REPORTS_URL,
+        lastVisitedUrl
+      );
     });
-    
+
+    newReports.reverse();
+
     // Step 4: Process each new report
     if (newReports && newReports.length > 0) {
-      // logWithTimestamp(`Processing ${newReports.length} new reports...`);
-      logger.info(`Processing ${newReports.length} new reports...`);
-      const processedReportsThisRun = []; // Store successfully processed reports
-      
-      // Process reports (newest first assumed)
-      latestProcessedUrl = newReports[0].url; // Store the newest URL to update last_visited_link
+      logger.info(`[Reports:5] Found ${newReports.length} new reports to process`);
+      let processedReportsThisRun = 0;
 
       for (const report of newReports) {
-        // logWithTimestamp(`--- Processing Report: ${report.title} ---`);
-        logger.info(`--- Processing Report: ${report.title} ---`);
-        let temporaryBody = ""; // Variable to hold the body temporarily
-        let summary = "Error: Could not summarize."; // Default summary
-        let processedReportData = { ...report }; // Copy initial data
-        const now = new Date().toISOString(); // Define 'now' timestamp once per report
+        logger.info(`[Report:5.1] Processing: "${report.title}"`);
+        let temporaryBody = "";
+        let summary = "Error: Could not summarize.";
+        let processedReportData = { ...report };
 
         try {
-          // Fetch body content
-          // fetchReportContent might have its own logging
-          const reportContent = await fetchReportContent(page, report.url);
-          temporaryBody = reportContent; // Store the fetched body
+          const { reportContent, publicationDate } = await fetchReportContent(page, report.url);
+          temporaryBody = reportContent;
 
-          if (reportContent !== "Error fetching content." && typeof reportContent === 'string') { // Check it's a string
-            logger.info(`Fetched content successfully for ${report.url}. Length: ${reportContent.length}`);
+          if (
+            reportContent !== "Error fetching content." &&
+            typeof reportContent === "string"
+          ) {
+            logger.info(
+              `[Report:5.2] Content fetched successfully. Length: ${reportContent.length} characters`
+            );
 
-            // Extract the published date from the page
-            let publishedDate = null;
-            try {
-              // Navigate to the report URL again to ensure we have the right page
-              await page.goto(report.url, { waitUntil: 'networkidle0', timeout: 30000 });
-              publishedDate = await extractPublishedDate(page);
-              if (publishedDate) {
-                logger.info(`Extracted published date for ${report.title}: ${publishedDate}`);
-              } else {
-                logger.warn(`Could not extract published date for ${report.title}`);
-              }
-            } catch (dateError) {
-              logger.error(`Error extracting published date: ${dateError.message}`);
-            }
-
-            // Summarize using Gemini (using the fetched body content)
             if (geminiInitialized) {
-              // Pass the fetched body content (temporaryBody) to Gemini
               summary = await getSummaryFromGemini(report.title, temporaryBody);
-              if (!summary || summary.startsWith('Error:')) { // Handle Gemini error or empty summary
-                summary = summary || "Error: Failed to get summary from Gemini."; // Keep specific error if available
-                // logWithTimestamp(`Failed to get summary from Gemini for: ${report.title}`);
-                logger.warn(`Failed to get summary from Gemini for: ${report.title}`);
+              if (!summary || summary.startsWith("Error:")) {
+                summary = summary || "Error: Failed to get summary from Gemini.";
+                logger.warn(`[AI:5.3] Summary generation failed for: "${report.title}"`);
               } else {
-                // logWithTimestamp(`Summary received from Gemini for: ${report.title}`);
-                logger.info(`Summary received from Gemini for: ${report.title}`);
+                logger.info(`[AI:5.3] Summary generated successfully for: "${report.title}"`);
               }
             } else {
               summary = "Error: Gemini not initialized.";
-              // logWithTimestamp('Skipping Gemini summary: Not initialized.', 'warn');
-              logger.warn('Skipping Gemini summary: Not initialized.');
+              logger.warn("[AI:5.3] Summary generation skipped: Gemini not initialized");
             }
 
-            // Construct the report object *after* summarization attempt
-            processedReportData = {
-              url: report.url,
-              title: report.title || "Untitled Report",
-              body: "", // Keep body empty in the final JSON structure
-              timestamp: report.timestamp || now,
-              scrapedAt: now,
-              lastChecked: now,
-              summary: summary, // Use the generated summary or error string
-              publicationDate: publishedDate || report.publicationDate || now // Use extracted date, or preserve original, or use 'now'
-            };
-
-             // Send to Slack if summary was successful
-            if (slackInitialized && !summary.startsWith('Error:')) {
+            if (slackInitialized && !summary.startsWith("Error:")) {
+              processedReportData.publicationDate = publicationDate;
+              processedReportData.summary = summary;
               try {
-                // logWithTimestamp(`Sending summary for "${processedReportData.title}" to Slack...`);
-                logger.info(`Sending summary for "${processedReportData.title}" to Slack...`);
-                // Pass the version *without* the body to Slack formatting
+                logger.info(`[Slack:5.4] Sending summary for: "${processedReportData.title}"`);
                 const blocks = formatReportForSlack(processedReportData);
-                await sendSlackMessage(`New Report Summary: ${processedReportData.title}`, blocks);
-                // logWithTimestamp(`Sent summary for "${processedReportData.title}" to Slack successfully.`);
-                logger.info(`Sent summary for "${processedReportData.title}" to Slack successfully.`);
+                await sendSlackMessage(
+                  `New Report Summary: ${processedReportData.title}`,
+                  blocks
+                );
+                logger.info(`[Slack:5.4] Summary sent successfully for: "${processedReportData.title}"`);
+
+                logger.info("[Link:5.5] Updating last visited link");
+                await writeLastVisitedLink(report.url);
+                logger.info(`[Link:5.5] Updated last visited link to: ${report.url}`);
+                processedReportsThisRun++;
               } catch (slackError) {
-                // logError(`Failed to send report "${processedReportData.title}" to Slack:`, slackError);
-                logger.error(`Failed to send report "${processedReportData.title}" to Slack: ${slackError.message}`, { stack: slackError.stack });
+                logger.error(
+                  `[Slack:5.4] Failed to send report "${processedReportData.title}": ${slackError.message}`,
+                  { stack: slackError.stack }
+                );
               }
-            } else if (!summary.startsWith('Error:')) {
-                 // logWithTimestamp(`Skipping Slack notification for "${processedReportData.title}" as Slack is not initialized.`, 'warn');
-                 logger.warn(`Skipping Slack notification for "${processedReportData.title}" as Slack is not initialized.`);
+            } else if (!summary.startsWith("Error:")) {
+              logger.warn(`[Slack:5.4] Notification skipped: Slack not initialized for "${processedReportData.title}"`);
             } else {
-                 // logWithTimestamp(`Skipping Slack notification for "${processedReportData.title}" due to summary error.`);
-                 logger.warn(`Skipping Slack notification for "${processedReportData.title}" due to summary error.`);
+              logger.warn(`[Slack:5.4] Notification skipped: Summary error for "${processedReportData.title}"`);
             }
-
           } else {
-            // logWithTimestamp(`Skipping summarization due to content fetch error for ${report.title}`);
-            logger.warn(`Skipping summarization due to content fetch error for ${report.title}`);
-            // Update report data with simple error state
-            processedReportData = {
-               url: report.url,
-               title: report.title || "Untitled Report",
-               body: "", // Keep body empty
-               timestamp: report.timestamp || now,
-               scrapedAt: now,
-               lastChecked: now,
-               summary: "Error: Could not fetch content.", // Simple error message
-               publicationDate: report.publicationDate || now
-            };
+            logger.warn(`[Report:5.2] Content fetch failed for: "${report.title}"`);
           }
-
-          // Add the processed (or error state) report data to our list for this run
-          processedReportsThisRun.push(processedReportData);
-
         } catch (error) {
-          // logError(`Error processing report ${report.url}:`, error);
-          logger.error(`Error processing report ${report.url}: ${error.message}`, { stack: error.stack });
-          // Add a basic error entry to processedReportsThisRun so it gets recorded
-           processedReportsThisRun.push({
-               url: report.url,
-               title: report.title || "Untitled Report",
-               body: "",
-               timestamp: report.timestamp || now,
-               scrapedAt: now,
-               lastChecked: now,
-               summary: `Error during processing: ${error.message}`,
-               publicationDate: report.publicationDate || now
-           });
+          logger.error(
+            `[Report:5.1] Processing error for "${report.url}": ${error.message}`,
+            { stack: error.stack }
+          );
         } finally {
-            // logWithTimestamp(`--- Finished Report: ${report.title} ---`);
-            logger.info(`--- Finished Report: ${report.title} ---`);
+          logger.info(`[Report:5.1] Completed processing: "${report.title}"`);
         }
-      } // End for loop
-
-      // Step 5: Update the main visited_links.json file using the modified function
-      if (processedReportsThisRun.length > 0) {
-        // Use the constant path and the modified function
-        await updateVisitedLinksFile(processedReportsThisRun, VISITED_LINKS_FILE_PATH);
-      } else {
-        // Still call the function even if no new reports, to ensure sorting/deduplication happens
-        logger.info('No new reports were successfully processed in this run, but updating file for consistency.');
-        await updateVisitedLinksFile([], VISITED_LINKS_FILE_PATH);
-        // logWithTimestamp('No reports were successfully processed in this run.');
       }
 
-      // Step 6: Update the last visited link file with the newest URL processed
-      if (latestProcessedUrl) { // Ensure we have a URL
-        await writeLastVisitedLink(latestProcessedUrl);
-        // console.log(`Updated last visited link to: ${latestProcessedUrl}`); // Keep or change to logger.info
-        logger.info(`Updated last visited link to: ${latestProcessedUrl}`);
-      } else {
-        logger.info('No new report URL found to update last visited link.', 'warn');
-      }
-      
-      // TODO: Send Slack messages for processedReportsThisRun if needed
-      // Example loop:
-      // for (const processedReport of processedReportsThisRun) {
-      //    if (!processedReport.summary.startsWith('Error:')) { 
-      //       await sendSlackMessage(...)
-      //    }
-      // }
-
-      logger.info(`✅ Processing complete for this run. Processed ${processedReportsThisRun.length} reports.`);
-      if (slackInitialized) {
-        await logMessage(`✅ Successfully processed ${processedReportsThisRun.length} reports. Newest: ${latestProcessedUrl || 'N/A'}`, [], false);
-      }
-
+      logger.info(
+        `[Flow:6] Processing complete. Successfully processed ${processedReportsThisRun} reports`
+      );
     } else {
-      logger.info('No new reports found since last visit.');
-       // Optionally, update the file even if no new reports were found to ensure it's sorted correctly
-      await updateVisitedLinksFile([], VISITED_LINKS_FILE_PATH);
-      if (slackInitialized) {
-        await logMessage('😴 No new reports found from Delphi Digital since last visit.', [], false);
-      }
+      logger.info("[Reports:5] No new reports found since last visit");
     }
-    
-    return true; // Indicate success
 
+    return true;
   } catch (error) {
-    // logError('An unexpected error occurred in the main flow', error);
-    logger.error(`An unexpected error occurred in the main flow: ${error.message}`, { stack: error.stack });
-    if (slackInitialized) {
-      await logMessage(`❌ An unexpected error occurred during the Delphi processing flow: ${error.message}`, [], true, 'error');
-    }
-    return false; // Indicate failure
+    logger.error(
+      `[Flow:7] Unexpected error: ${error.message}`,
+      { stack: error.stack }
+    );
+    return false;
   } finally {
     if (browser) {
       await browser.close();
-      // logWithTimestamp('Browser closed.');
-      logger.info('Browser closed.');
+      logger.info("[Browser:8] Session closed");
     }
-    logger.info(`=== Delphi full flow finished: ${new Date().toISOString()} ===`);
-  }
-}
-
-// Function to start daemon
-async function startDaemon() {
-  try {
-    // Check if already running
-    try {
-      const pidData = await fs.readFile(PID_FILE, 'utf8');
-      const pid = parseInt(pidData.trim(), 10);
-      
-      // Check if process is still running
-      process.kill(pid, 0);
-      logger.info(`Delphi full flow is already running with PID ${pid}`);
-      return false;
-    } catch (err) {
-      // Process not running or PID file doesn't exist, which is fine
-    }
-    
-    // Start the daemon
-    logger.info('Starting Delphi full flow daemon...');
-    
-    // Use node to run this script with the same arguments but without --daemon
-    const args = process.argv.slice(2).filter(arg => arg !== '--daemon');
-    const child = spawn('node', [__filename, ...args], {
-      detached: true,
-      stdio: 'ignore',
-      env: process.env
-    });
-    
-    // Detach the child process
-    child.unref();
-    
-    // Write PID file
-    await fs.writeFile(PID_FILE, child.pid.toString());
-    
-    logger.info(`Delphi full flow daemon started with PID ${child.pid}`);
-    logger.info('The daemon will check for new reports every 24 hours by default.');
-    logger.info('You can stop it using: npm run delphi:stop');
-    
-    return true;
-  } catch (error) {
-    logger.error('Error starting daemon:', error);
-    return false;
-  }
-}
-
-// Function to schedule regular checks
-async function scheduledExecution() {
-  // Run the initial flow
-  await runFullFlow();
-  
-  // Get cron schedule from config or use default (daily at midnight)
-  const cronSchedule = appConfig.CRON_SCHEDULE || '0 0 * * *';
-  
-  // Schedule regular checks using cron
-  if (cron.validate(cronSchedule)) {
-    cron.schedule(cronSchedule, async () => {
-      await runFullFlow();
-    });
-    
-    logger.info(`Delphi flow scheduled with cron pattern: ${cronSchedule}`);
-  } else {
-    logger.error(`Invalid cron pattern: ${cronSchedule}. Check your configuration.`);
-    process.exit(1);
-  }
-}
-
-// Main execution
-async function main() {
-  if (daemon) {
-    // Start as daemon
-    await startDaemon();
-  } else {
-    // Run scheduled execution
-    await scheduledExecution();
+    logger.info(`[Flow:9] Delphi full flow completed at ${new Date().toISOString()}`);
   }
 }
 
@@ -460,10 +192,3 @@ async function main() {
 if (require.main === module) {
   main();
 }
-
-// Export functions for testing and importing
-module.exports = {
-  runFullFlow,
-  startDaemon,
-  scheduledExecution
-}; 

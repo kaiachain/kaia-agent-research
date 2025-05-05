@@ -1,5 +1,5 @@
 const { loadCookies, verifyCookieLogin, saveCookies } = require('../browser/browser');
-const logger = require('../scripts/logger'); // Import the shared logger
+const logger = require('../utils/logger'); // Import the shared logger
 
 // Function to handle login
 async function login(page, email, password, cookiesFile) {
