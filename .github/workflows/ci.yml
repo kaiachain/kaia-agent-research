@@ -34,7 +34,7 @@ jobs:
         env:
             ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
             ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_PROD }}
-            IMAGE_TAG: ${{ steps.secrets.outputs.hash }}
+            IMAGE_TAG: ${{ steps.vars.outputs.hash }}
         run: |
             docker build  -f Dockerfile --build-arg VERSION=$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
             docker push $ECR_REGISTRY/$ECR_REPOSITORY -a
