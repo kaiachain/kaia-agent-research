@@ -18,9 +18,9 @@ jobs:
       - name: Get AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_IAM_ROLE_ARN_PROD}}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN_PROD}}
           role-session-name: SessionForKlaytnActions
-          aws-region: ${{ vars.AWS_REGION_PROD}}
+          aws-region: ${{ secrets.AWS_REGION_PROD}}
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -33,8 +33,8 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
             ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-            ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_PROD }}
-            IMAGE_TAG: ${{ steps.vars.outputs.hash }}
+            ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_PROD }}
+            IMAGE_TAG: ${{ steps.secrets.outputs.hash }}
         run: |
             docker build  -f Dockerfile --build-arg VERSION=$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
             docker push $ECR_REGISTRY/$ECR_REPOSITORY -a
